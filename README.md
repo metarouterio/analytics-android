@@ -4,7 +4,7 @@ analytics-android
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.segment.analytics.android/analytics/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.segment.analytics.android/analytics)
 [![Javadocs](http://javadoc-badge.appspot.com/com.segment.analytics.android/analytics.svg?label=javadoc)](http://javadoc-badge.appspot.com/com.segment.analytics.android/analytics)
 
-analytics-android is an Android client for [Segment](https://segment.com)
+analytics-android is an Android client for [Astronomer](https://astronomer.io)
 
 ## Documentation
 
