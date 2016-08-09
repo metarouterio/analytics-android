@@ -7,7 +7,7 @@ import com.segment.analytics.Analytics;
 public class SampleApp extends Application {
 
   // https://segment.com/segment-engineering/sources/android-test/settings/keys
-  private static final String ANALYTICS_WRITE_KEY = "5m6gbdgho6";
+  private static final String ANALYTICS_WRITE_KEY = "M22kc6xTTPyKmpfFg";
 
   @Override public void onCreate() {
     super.onCreate();
@@ -30,7 +30,7 @@ public class SampleApp extends Application {
     // listener.
     analytics.onIntegrationReady("Segment.io", new Analytics.Callback() {
       @Override public void onReady(Object instance) {
-        Toast.makeText(SampleApp.this, "Segment integration!", Toast.LENGTH_LONG).show();
+        Toast.makeText(SampleApp.this, "Astronomer integration!", Toast.LENGTH_LONG).show();
       }
     });
   }

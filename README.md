@@ -4,15 +4,54 @@ analytics-android
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.segment.analytics.android/analytics/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.segment.analytics.android/analytics)
 [![Javadocs](http://javadoc-badge.appspot.com/com.segment.analytics.android/analytics.svg?label=javadoc)](http://javadoc-badge.appspot.com/com.segment.analytics.android/analytics)
 
-analytics-android is an Android client for [Segment](https://segment.com)
+analytics-android is an Android client for [Astronomer](https://astronomer.io)
 
 ## Documentation
 
 You can find usage documentation at [https://segment.com/libraries/android](https://segment.com/libraries/android).
 
-## Integrating with Segment
+## Snapshots
 
-Interested in integrating your service with us? Check out our [Partners page](https://segment.com/partners/) for more details.
+All changes committed to master are automatically released as snapshots.
+
+To add a snapshot dependency to your builds, make sure you add the snapshot repository so your build system can look up the dependency.
+
+Maven users can add the following to their `pom.xml`:
+```
+<repository>
+    <id>ossrh</id>
+    <name>Sonatype Snapshot Repository</name>
+    <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+    <releases>
+        <enabled>false</enabled>
+    </releases>
+    <snapshots>
+        <enabled>true</enabled>
+    </snapshots>
+</repository>
+```
+
+Gradle users should declare this in their repositories block:
+```
+repositories {
+    mavenCentral()
+    maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
+}
+```
+
+# Open-Source at Astronomer
+
+One of our core values at Astronomer is "openness." We see this manifest in our dedication to open-source. We are relentless to **only invent what we must invent**; to use and contribute to the large and growing body of open-source software that countless developers have selflessly contributed to the world.
+
+And it's not just about receiving value. Open-source is a two-way street. A core element of our business strategy is to open-source the [Aries Framework](github.com/aries-data), with the goal to reduce the amount of time developers waste re-writing integrations.
+
+We also have many open-source projects in [our main Github organization](https://github.com/astronomerio).
+
+## Special Notice re: Analytics.js and Segment
+
+Early on, in order to get clickstream data collection capability quickly within our platform, and after a conversation with Peter Reinhart (an early Analytics.js contributor and CEO of Segment), we decided to adopt Analytics.js to support it as a standard for clickstream data collection. As Segment has built a successful commercial venture around the core library, they've open-sourced a number of supporting plugins and SDKs that we've also adopted.
+
+Clickstream is one part of Astronomer, and an important one to our early customers. We publicly thank Segment for their open-source contributions, it made it easier to stand up that part of our platform. In appreciation and in the spirit of our cooperation, we open-source all of our Analytics.js-related code, contributing back to a growing ecosystem.
 
 ## License
 
