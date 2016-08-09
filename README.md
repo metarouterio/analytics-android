@@ -38,6 +38,11 @@ repositories {
     maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
 }
 ```
+To include snapshot versions in your gradle project, add the following to build.gradle: 
+
+```
+compile 'io.astronomer.analytics.android:analytics:4.1.6-SNAPSHOT'
+```
 
 # Open-Source at Astronomer
 
