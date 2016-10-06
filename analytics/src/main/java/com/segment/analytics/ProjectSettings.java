@@ -25,6 +25,7 @@
 package com.segment.analytics;
 
 import android.content.Context;
+import com.segment.analytics.internal.Private;
 import java.util.Map;
 
 import static java.util.Collections.unmodifiableMap;
@@ -41,7 +42,7 @@ class ProjectSettings extends ValueMap {
     return new ProjectSettings(map);
   }
 
-  private ProjectSettings(Map<String, Object> map) {
+  @Private ProjectSettings(Map<String, Object> map) {
     super(unmodifiableMap(map));
   }
 
@@ -67,10 +68,13 @@ class ProjectSettings extends ValueMap {
 
   static class Cache extends ValueMap.Cache<ProjectSettings> {
 
+    // todo: remove. This is legacy behaviour from before we started namespacing the entire shared
+    // preferences object and were namespacing keys instead.
     private static final String PROJECT_SETTINGS_CACHE_KEY_PREFIX = "project-settings-plan-";
 
     Cache(Context context, Cartographer cartographer, String tag) {
-      super(context, cartographer, PROJECT_SETTINGS_CACHE_KEY_PREFIX + tag, ProjectSettings.class);
+      super(context, cartographer, PROJECT_SETTINGS_CACHE_KEY_PREFIX + tag, tag,
+          ProjectSettings.class);
     }
 
     @Override public ProjectSettings create(Map<String, Object> map) {

@@ -45,8 +45,13 @@ import com.segment.analytics.integrations.Integration;
 import com.segment.analytics.integrations.Logger;
 import com.segment.analytics.integrations.ScreenPayload;
 import com.segment.analytics.integrations.TrackPayload;
+import com.segment.analytics.internal.Private;
 import com.segment.analytics.internal.Utils;
 import com.segment.analytics.internal.Utils.AnalyticsNetworkExecutorService;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -61,7 +66,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static com.segment.analytics.internal.Utils.THREAD_PREFIX;
 import static com.segment.analytics.internal.Utils.buffer;
 import static com.segment.analytics.internal.Utils.closeQuietly;
 import static com.segment.analytics.internal.Utils.getResourceString;
@@ -89,33 +93,34 @@ import static com.segment.analytics.internal.Utils.isNullOrEmpty;
  * @see <a href="https://Segment/">Segment</a>
  */
 public class Analytics {
-  private static final String ANALYTICS_THREAD_NAME = THREAD_PREFIX + "Analytics";
   static final Handler HANDLER = new Handler(Looper.getMainLooper()) {
     @Override public void handleMessage(Message msg) {
       throw new AssertionError("Unknown handler message received: " + msg.what);
     }
   };
-  private static final String OPT_OUT_PREFERENCE_KEY = "opt-out";
+  @Private static final String OPT_OUT_PREFERENCE_KEY = "opt-out";
   static final String WRITE_KEY_RESOURCE_IDENTIFIER = "analytics_write_key";
   static final List<String> INSTANCES = new ArrayList<>(1);
   volatile static Analytics singleton = null;
-  private static final Properties EMPTY_PROPERTIES = new Properties();
+  @Private static final Properties EMPTY_PROPERTIES = new Properties();
   private static final String VERSION_KEY = "version";
   private static final String BUILD_KEY = "build";
+  private static final String TRACKED_ATTRIBUTION_KEY = "tracked_attribution";
 
   private final Application application;
   final ExecutorService networkExecutor;
   final Stats stats;
-  private final Options defaultOptions;
-  private final Traits.Cache traitsCache;
-  private final AnalyticsContext analyticsContext;
+  @Private final Options defaultOptions;
+  @Private final Traits.Cache traitsCache;
+  @Private final AnalyticsContext analyticsContext;
   private final Logger logger;
   final String tag;
   final Client client;
   final Cartographer cartographer;
   private final ProjectSettings.Cache projectSettingsCache;
+  final Crypto crypto;
   ProjectSettings projectSettings; // todo: make final (non-final for testing).
-  private final String writeKey;
+  @Private final String writeKey;
   final int flushQueueSize;
   final long flushIntervalInMillis;
   // Retrieving the advertising ID is asynchronous. This latch helps us wait to ensure the
@@ -186,11 +191,12 @@ public class Analytics {
 
   Analytics(Application application, ExecutorService networkExecutor, Stats stats,
       Traits.Cache traitsCache, AnalyticsContext analyticsContext, Options defaultOptions,
-      Logger logger, String tag, final List<Integration.Factory> factories, Client client,
+      final Logger logger, String tag, final List<Integration.Factory> factories, Client client,
       Cartographer cartographer, ProjectSettings.Cache projectSettingsCache, String writeKey,
       int flushQueueSize, long flushIntervalInMillis, final ExecutorService analyticsExecutor,
       final boolean shouldTrackApplicationLifecycleEvents, CountDownLatch advertisingIdLatch,
-      final boolean shouldRecordScreenViews, BooleanPreference optOut) {
+      final boolean shouldRecordScreenViews, final boolean trackAttributionInformation,
+      BooleanPreference optOut, Crypto crypto) {
     this.application = application;
     this.networkExecutor = networkExecutor;
     this.stats = stats;
@@ -209,6 +215,9 @@ public class Analytics {
     this.optOut = optOut;
     this.factories = Collections.unmodifiableList(factories);
     this.analyticsExecutor = analyticsExecutor;
+    this.crypto = crypto;
+
+    namespaceSharedPreferences();
 
     analyticsExecutor.submit(new Runnable() {
       @Override public void run() {
@@ -243,6 +252,14 @@ public class Analytics {
         if (!trackedApplicationLifecycleEvents.getAndSet(true)
             && shouldTrackApplicationLifecycleEvents) {
           trackApplicationLifecycleEvents();
+
+          if (trackAttributionInformation) {
+            analyticsExecutor.submit(new Runnable() {
+              @Override public void run() {
+                trackAttributionInformation();
+              }
+            });
+          }
         }
         runOnMainThread(IntegrationOperation.onActivityCreated(activity, savedInstanceState));
       }
@@ -276,14 +293,46 @@ public class Analytics {
     });
   }
 
-  private void trackApplicationLifecycleEvents() {
+  @Private void trackAttributionInformation() {
+    BooleanPreference trackedAttribution =
+        new BooleanPreference(getSegmentSharedPreferences(application, tag),
+            TRACKED_ATTRIBUTION_KEY, false);
+    if (trackedAttribution.get()) {
+      return;
+    }
+
+    waitForAdvertisingId();
+
+    Client.Connection connection = null;
+    try {
+      connection = client.attribution();
+
+      // Write the request body.
+      Writer writer = new BufferedWriter(new OutputStreamWriter(connection.os));
+      cartographer.toJson(analyticsContext, writer);
+
+      // Read the response body.
+      Map<String, Object> map =
+          cartographer.fromJson(buffer(connection.connection.getInputStream()));
+      Properties properties = new Properties(map);
+
+      track("Install Attributed", properties);
+      trackedAttribution.set(true);
+    } catch (IOException e) {
+      logger.error(e, "Unable to track attribution information. Retrying on next launch.");
+    } finally {
+      closeQuietly(connection);
+    }
+  }
+
+  @Private void trackApplicationLifecycleEvents() {
     // Get the current version.
     PackageInfo packageInfo = getPackageInfo(application);
     String currentVersion = packageInfo.versionName;
     int currentBuild = packageInfo.versionCode;
 
     // Get the previous recorded version.
-    SharedPreferences sharedPreferences = getSegmentSharedPreferences(application);
+    SharedPreferences sharedPreferences = getSegmentSharedPreferences(application, tag);
     String previousVersion = sharedPreferences.getString(VERSION_KEY, null);
     int previousBuild = sharedPreferences.getInt(BUILD_KEY, -1);
 
@@ -320,7 +369,7 @@ public class Analytics {
     }
   }
 
-  private void recordScreenViews(Activity activity) {
+  @Private void recordScreenViews(Activity activity) {
     PackageManager packageManager = activity.getPackageManager();
     try {
       ActivityInfo info =
@@ -332,7 +381,7 @@ public class Analytics {
     }
   }
 
-  private void runOnMainThread(final IntegrationOperation operation) {
+  @Private void runOnMainThread(final IntegrationOperation operation) {
     analyticsExecutor.submit(new Runnable() {
       @Override public void run() {
         HANDLER.post(new Runnable() {
@@ -758,6 +807,7 @@ public class Analytics {
    * on disk are not cleared, and will be uploaded at a later time.
    */
   public void reset() {
+    Utils.getSegmentSharedPreferences(application, tag).edit().clear().apply();
     traitsCache.delete();
     traitsCache.set(Traits.create());
     analyticsContext.setTraits(traitsCache.get());
@@ -919,6 +969,8 @@ public class Analytics {
     private List<Integration.Factory> factories;
     private boolean trackApplicationLifecycleEvents = false;
     private boolean recordScreenViews = false;
+    private boolean trackAttributionInformation = true;
+    private Crypto crypto;
 
     /** Start building a new {@link Analytics} instance. */
     public Builder(Context context, String writeKey) {
@@ -1070,6 +1122,17 @@ public class Analytics {
       return this;
     }
 
+    /**
+     * Specify the crypto interface for customizing how data is stored at rest.
+     */
+    public Builder crypto(Crypto crypto) {
+      if (crypto == null) {
+        throw new IllegalArgumentException("Crypto must not be null.");
+      }
+      this.crypto = crypto;
+      return this;
+    }
+
     /** TODO: docs */
     public Builder use(Integration.Factory factory) {
       if (factory == null) {
@@ -1091,6 +1154,12 @@ public class Analytics {
     /** Automatically record screen calls when activities are created. */
     public Builder recordScreenViews() {
       this.recordScreenViews = true;
+      return this;
+    }
+
+    /** Automatically track attribution information from enabled providers. */
+    public Builder trackAttributionInformation() {
+      this.trackAttributionInformation = true;
       return this;
     }
 
@@ -1121,6 +1190,9 @@ public class Analytics {
       if (connectionFactory == null) {
         connectionFactory = new ConnectionFactory();
       }
+      if (crypto == null) {
+        crypto = Crypto.none();
+      }
 
       final Stats stats = new Stats();
       final Cartographer cartographer = Cartographer.INSTANCE;
@@ -1130,8 +1202,8 @@ public class Analytics {
           new ProjectSettings.Cache(application, cartographer, tag);
 
       BooleanPreference optOut =
-          new BooleanPreference(getSegmentSharedPreferences(application), OPT_OUT_PREFERENCE_KEY,
-              false);
+          new BooleanPreference(getSegmentSharedPreferences(application, tag),
+              OPT_OUT_PREFERENCE_KEY, false);
 
       Traits.Cache traitsCache = new Traits.Cache(application, cartographer, tag);
       if (!traitsCache.isSet() || traitsCache.get() == null) {
@@ -1152,7 +1224,8 @@ public class Analytics {
       return new Analytics(application, networkExecutor, stats, traitsCache, analyticsContext,
           defaultOptions, logger, tag, factories, client, cartographer, projectSettingsCache,
           writeKey, flushQueueSize, flushIntervalInMillis, Executors.newSingleThreadExecutor(),
-          trackApplicationLifecycleEvents, advertisingIdLatch, recordScreenViews, optOut);
+          trackApplicationLifecycleEvents, advertisingIdLatch, recordScreenViews,
+          trackAttributionInformation, optOut, crypto);
     }
   }
 
@@ -1190,7 +1263,7 @@ public class Analytics {
    * 2. If the cache is not stale, use it.
    * 2. If the cache is stale, try to get new settings.
    */
-  private ProjectSettings getSettings() {
+  @Private ProjectSettings getSettings() {
     ProjectSettings settings = projectSettingsCache.get();
     if (isNullOrEmpty(settings)) {
       return downloadSettings();
@@ -1241,12 +1314,34 @@ public class Analytics {
     }
   }
 
-  private <T> void performCallback(String key, Callback<T> callback) {
+  @Private <T> void performCallback(String key, Callback<T> callback) {
     for (Map.Entry<String, Integration<?>> entry : integrations.entrySet()) {
       if (key.equals(entry.getKey())) {
         callback.onReady((T) entry.getValue().getUnderlyingInstance());
         return;
       }
+    }
+  }
+
+  /**
+   * Previously (until version 4.1.7) shared preferences were not namespaced by a tag.
+   * This meant that all analytics instances shared the same shared preferences.
+   * This migration checks if the namespaced shared preferences instance contains
+   * {@code namespaceSharedPreferences: true}.
+   * If it does, the migration is already run and does not need to be run again.
+   * If it doesn't, it copies the legacy shared preferences mapping into the namespaced shared
+   * preferences, and sets namespaceSharedPreferences to false.
+   */
+  private void namespaceSharedPreferences() {
+    SharedPreferences newSharedPreferences = Utils.getSegmentSharedPreferences(application, tag);
+    BooleanPreference namespaceSharedPreferences =
+        new BooleanPreference(newSharedPreferences, "namespaceSharedPreferences", true);
+
+    if (namespaceSharedPreferences.get()) {
+      SharedPreferences legacySharedPreferences =
+          application.getSharedPreferences("analytics-android", Context.MODE_PRIVATE);
+      Utils.copySharedPreferences(legacySharedPreferences, newSharedPreferences);
+      namespaceSharedPreferences.set(false);
     }
   }
 }

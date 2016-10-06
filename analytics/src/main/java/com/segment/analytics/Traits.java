@@ -25,6 +25,7 @@
 package com.segment.analytics;
 
 import android.content.Context;
+import com.segment.analytics.internal.Private;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -83,7 +84,7 @@ public class Traits extends ValueMap {
   }
 
   /** For deserialization from disk by {@link Traits.Cache}. */
-  private Traits(Map<String, Object> delegate) {
+  @Private Traits(Map<String, Object> delegate) {
     super(delegate);
   }
 
@@ -402,10 +403,12 @@ public class Traits extends ValueMap {
 
   static class Cache extends ValueMap.Cache<Traits> {
 
+    // todo: remove. This is legacy behaviour from before we started namespacing the entire shared
+    // preferences object and were namespacing keys instead.
     private static final String TRAITS_CACHE_PREFIX = "traits-";
 
     Cache(Context context, Cartographer cartographer, String tag) {
-      super(context, cartographer, TRAITS_CACHE_PREFIX + tag, Traits.class);
+      super(context, cartographer, TRAITS_CACHE_PREFIX + tag, tag, Traits.class);
     }
 
     @Override public Traits create(Map<String, Object> map) {

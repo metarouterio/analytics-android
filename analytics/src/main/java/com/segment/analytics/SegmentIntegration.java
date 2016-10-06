@@ -14,8 +14,10 @@ import com.segment.analytics.integrations.Integration;
 import com.segment.analytics.integrations.Logger;
 import com.segment.analytics.integrations.ScreenPayload;
 import com.segment.analytics.integrations.TrackPayload;
+import com.segment.analytics.internal.Private;
 import com.segment.analytics.internal.Utils.AnalyticsThreadFactory;
 import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
@@ -38,7 +40,6 @@ import static com.segment.analytics.internal.Utils.THREAD_PREFIX;
 import static com.segment.analytics.internal.Utils.closeQuietly;
 import static com.segment.analytics.internal.Utils.createDirectory;
 import static com.segment.analytics.internal.Utils.isConnected;
-import static com.segment.analytics.internal.Utils.isNullOrEmpty;
 import static com.segment.analytics.internal.Utils.toISO8601Date;
 
 /** Entity that queues payloads on disks and uploads them periodically. */
@@ -48,7 +49,8 @@ class SegmentIntegration extends Integration<Void> {
       return SegmentIntegration.create(analytics.getApplication(), analytics.client,
           analytics.cartographer, analytics.networkExecutor, analytics.stats,
           Collections.unmodifiableMap(analytics.bundledIntegrations), analytics.tag,
-          analytics.flushIntervalInMillis, analytics.flushQueueSize, analytics.getLogger());
+          analytics.flushIntervalInMillis, analytics.flushQueueSize, analytics.getLogger(),
+          analytics.crypto);
     }
 
     @Override public String key() {
@@ -69,8 +71,8 @@ class SegmentIntegration extends Integration<Void> {
    * that is not present in payloads themselves, but is added later, such as {@code sentAt},
    * {@code integrations} and other json tokens.
    */
-  private static final int MAX_BATCH_SIZE = 475000; // 475KB.
-  private static final Charset UTF_8 = Charset.forName("UTF-8");
+  @Private static final int MAX_BATCH_SIZE = 475000; // 475KB.
+  @Private static final Charset UTF_8 = Charset.forName("UTF-8");
   private static final String SEGMENT_THREAD_NAME = THREAD_PREFIX + "SegmentDispatcher";
   static final String SEGMENT_KEY = "Segment.io";
   private final Context context;
@@ -110,7 +112,8 @@ class SegmentIntegration extends Integration<Void> {
    * This lock is used ensure that the Dispatcher thread doesn't remove payloads when we're
    * uploading.
    */
-  private final Object flushLock = new Object();
+  @Private final Object flushLock = new Object();
+  private final Crypto crypto;
 
   /**
    * Create a {@link QueueFile} in the given folder with the given name. If the underlying file is
@@ -135,7 +138,7 @@ class SegmentIntegration extends Integration<Void> {
   static synchronized SegmentIntegration create(Context context, Client client,
       Cartographer cartographer, ExecutorService networkExecutor, Stats stats,
       Map<String, Boolean> bundledIntegrations, String tag, long flushIntervalInMillis,
-      int flushQueueSize, Logger logger) {
+      int flushQueueSize, Logger logger, Crypto crypto) {
     PayloadQueue payloadQueue;
     try {
       File folder = context.getDir("segment-disk-queue", Context.MODE_PRIVATE);
@@ -146,13 +149,13 @@ class SegmentIntegration extends Integration<Void> {
       payloadQueue = new PayloadQueue.MemoryQueue(new ArrayList<byte[]>());
     }
     return new SegmentIntegration(context, client, cartographer, networkExecutor, payloadQueue,
-        stats, bundledIntegrations, flushIntervalInMillis, flushQueueSize, logger);
+        stats, bundledIntegrations, flushIntervalInMillis, flushQueueSize, logger, crypto);
   }
 
   SegmentIntegration(Context context, Client client, Cartographer cartographer,
       ExecutorService networkExecutor, PayloadQueue payloadQueue, Stats stats,
       Map<String, Boolean> bundledIntegrations, long flushIntervalInMillis, int flushQueueSize,
-      Logger logger) {
+      Logger logger, Crypto crypto) {
     this.context = context;
     this.client = client;
     this.networkExecutor = networkExecutor;
@@ -163,6 +166,7 @@ class SegmentIntegration extends Integration<Void> {
     this.cartographer = cartographer;
     this.flushQueueSize = flushQueueSize;
     this.flushScheduler = Executors.newScheduledThreadPool(1, new AnalyticsThreadFactory());
+    this.crypto = crypto;
 
     segmentThread = new HandlerThread(SEGMENT_THREAD_NAME, THREAD_PRIORITY_BACKGROUND);
     segmentThread.start();
@@ -233,11 +237,14 @@ class SegmentIntegration extends Integration<Void> {
     }
 
     try {
-      String payloadJson = cartographer.toJson(payload);
-      if (isNullOrEmpty(payloadJson) || payloadJson.length() > MAX_PAYLOAD_SIZE) {
+      ByteArrayOutputStream bos = new ByteArrayOutputStream();
+      OutputStream cos = crypto.encrypt(bos);
+      cartographer.toJson(payload, new OutputStreamWriter(cos));
+      byte[] bytes = bos.toByteArray();
+      if (bytes == null || bytes.length == 0 || bytes.length > MAX_PAYLOAD_SIZE) {
         throw new IOException("Could not serialize payload " + payload);
       }
-      payloadQueue.add(payloadJson.getBytes(UTF_8));
+      payloadQueue.add(bytes);
     } catch (IOException e) {
       logger.error(e, "Could not add payload %s to queue: %s.", payload, payloadQueue);
       return;
@@ -274,15 +281,14 @@ class SegmentIntegration extends Integration<Void> {
   }
 
   /** Upload payloads to our servers and remove them from the queue file. */
-  private void performFlush() {
+  @Private void performFlush() {
     // Conditions could have changed between enqueuing the task and when it is run.
     if (!shouldFlush()) {
       return;
     }
 
     logger.verbose("Uploading payloads in queue to Segment.");
-    int payloadsUploaded;
-
+    int payloadsUploaded = 0;
     Client.Connection connection = null;
     try {
       // Open a connection.
@@ -292,18 +298,21 @@ class SegmentIntegration extends Integration<Void> {
       BatchPayloadWriter writer = new BatchPayloadWriter(connection.os) //
           .beginObject() //
           .beginBatchArray();
-      PayloadWriter payloadWriter = new PayloadWriter(writer);
+      PayloadWriter payloadWriter = new PayloadWriter(writer, crypto);
       payloadQueue.forEach(payloadWriter);
       writer.endBatchArray().endObject().close();
-      // Don't use the result of QueueFiles#forEach, since we may not read the last element.
+      // Don't use the result of QueueFiles#forEach, since we may not upload the last element.
       payloadsUploaded = payloadWriter.payloadCount;
 
-      try {
-        // Upload the payloads.
-        connection.close();
-      } catch (Client.UploadException e) {
+      // Upload the payloads.
+      connection.close();
+    } catch (Client.HTTPException e) {
+      if (e.responseCode >= 400 && e.responseCode < 500) {
         // Simply log and proceed to remove the rejected payloads from the queue.
         logger.error(e, "Payloads were rejected by server. Marked for removal.");
+      } else {
+        logger.error(e, "Error while uploading payloads");
+        return;
       }
     } catch (IOException e) {
       logger.error(e, "Error while uploading payloads");
@@ -336,20 +345,23 @@ class SegmentIntegration extends Integration<Void> {
   static class PayloadWriter implements PayloadQueue.ElementVisitor {
 
     final BatchPayloadWriter writer;
+    final Crypto crypto;
     int size;
     int payloadCount;
 
-    PayloadWriter(BatchPayloadWriter writer) {
+    PayloadWriter(BatchPayloadWriter writer, Crypto crypto) {
       this.writer = writer;
+      this.crypto = crypto;
     }
 
     @Override public boolean read(InputStream in, int length) throws IOException {
+      InputStream is = crypto.decrypt(in);
       final int newSize = size + length;
       if (newSize > MAX_BATCH_SIZE) return false;
       size = newSize;
       byte[] data = new byte[length];
       //noinspection ResultOfMethodCallIgnored
-      in.read(data, 0, length);
+      is.read(data, 0, length);
       writer.emitPayloadObject(new String(data, UTF_8));
       payloadCount++;
       return true;
@@ -420,7 +432,7 @@ class SegmentIntegration extends Integration<Void> {
   static class SegmentDispatcherHandler extends Handler {
 
     static final int REQUEST_FLUSH = 1;
-    private static final int REQUEST_ENQUEUE = 0;
+    @Private static final int REQUEST_ENQUEUE = 0;
     private final SegmentIntegration segmentIntegration;
 
     SegmentDispatcherHandler(Looper looper, SegmentIntegration segmentIntegration) {
