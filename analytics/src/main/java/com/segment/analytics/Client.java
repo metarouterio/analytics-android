@@ -42,6 +42,8 @@ class Client {
 
   final ConnectionFactory connectionFactory;
   final String writeKey;
+  final String endpoint;
+  final String cdn;
 
   private static Connection createPostConnection(HttpURLConnection connection) throws IOException {
     final OutputStream outputStream;
@@ -82,13 +84,15 @@ class Client {
     };
   }
 
-  Client(String writeKey, ConnectionFactory connectionFactory) {
+  Client(String writeKey, String endpoint, String cdn, ConnectionFactory connectionFactory) {
     this.writeKey = writeKey;
+    this.endpoint = endpoint;
+    this.cdn = cdn;
     this.connectionFactory = connectionFactory;
   }
 
   Connection upload() throws IOException {
-    HttpURLConnection connection = connectionFactory.upload(writeKey);
+    HttpURLConnection connection = connectionFactory.upload(writeKey, endpoint);
     return createPostConnection(connection);
   }
 
@@ -98,7 +102,7 @@ class Client {
   }
 
   Connection fetchSettings() throws IOException {
-    HttpURLConnection connection = connectionFactory.projectSettings(writeKey);
+    HttpURLConnection connection = connectionFactory.projectSettings(writeKey, cdn);
     int responseCode = connection.getResponseCode();
     if (responseCode != HTTP_OK) {
       connection.disconnect();

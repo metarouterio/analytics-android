@@ -17,3 +17,7 @@ checkstyle {
   configFile rootProject.file('gradle/checkstyle.xml')
   showViolations true
 }
+
+android {
+  buildToolsVersion '26.0.2'
+}

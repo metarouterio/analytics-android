@@ -35,3 +35,7 @@ checkstyle {
 
 apply from: rootProject.file('gradle/attach-jar.gradle')
 apply from: rootProject.file('gradle/gradle-mvn-push.gradle')
+
+android {
+    buildToolsVersion '26.0.2'
+}

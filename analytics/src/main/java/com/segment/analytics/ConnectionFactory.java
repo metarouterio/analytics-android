@@ -1,6 +1,7 @@
 package com.segment.analytics;
 
 import android.util.Base64;
+
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -19,16 +20,16 @@ public class ConnectionFactory {
   }
 
   /** Return a {@link HttpURLConnection} that reads JSON formatted project settings. */
-  public HttpURLConnection projectSettings(String writeKey) throws IOException {
-    return openConnection("https://cdn.astronomer.io/v1/projects/" + writeKey + "/settings");
+  public HttpURLConnection projectSettings(String writeKey, String cdn) throws IOException {
+    return openConnection("http://" + cdn + "/v1/projects/" + writeKey + "/settings");
   }
 
   /**
    * Return a {@link HttpURLConnection} that writes batched payloads to {@code
    * https://api.segment.io/v1/import}.
    */
-  public HttpURLConnection upload(String writeKey) throws IOException {
-    HttpURLConnection connection = openConnection("https://api.astronomer.io/v1/import");
+  public HttpURLConnection upload(String writeKey, String endpoint) throws IOException {
+    HttpURLConnection connection = openConnection("http://" + endpoint + "/v1/import");
     connection.setRequestProperty("Authorization", authorizationHeader(writeKey));
     connection.setRequestProperty("Content-Encoding", "gzip");
     connection.setDoOutput(true);
@@ -50,8 +51,8 @@ public class ConnectionFactory {
   }
 
   /**
-   * Configures defaults for connections opened with {@link #upload(String)},  {@link
-   * #attribution(String)} and {@link #projectSettings(String)}.
+   * Configures defaults for connections opened with {@link #upload(String, String)},  {@link
+   * #attribution(String)} and {@link #projectSettings(String, String)}.
    */
   protected HttpURLConnection openConnection(String url) throws IOException {
     HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();

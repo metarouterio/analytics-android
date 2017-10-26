@@ -100,6 +100,8 @@ public class Analytics {
   };
   @Private static final String OPT_OUT_PREFERENCE_KEY = "opt-out";
   static final String WRITE_KEY_RESOURCE_IDENTIFIER = "analytics_write_key";
+  static final String ENDPOINT_RESOURCE_IDENTIFIER = "api_endpoint";
+  static final String CDN_RESOURCE_IDENTIFIER = "cdn";
   static final List<String> INSTANCES = new ArrayList<>(1);
   volatile static Analytics singleton = null;
   @Private static final Properties EMPTY_PROPERTIES = new Properties();
@@ -144,7 +146,7 @@ public class Analytics {
    * If these settings do not meet the requirements of your application, you can override defaults
    * in {@code analytics.xml}, or you can construct your own instance with full control over the
    * configuration by using {@link Builder}.
-   * <p/>
+   * <p/>I
    * By default, events are uploaded every 30 seconds, or every 20 events (whichever occurs first),
    * and debugging is disabled.
    */
@@ -156,7 +158,9 @@ public class Analytics {
       synchronized (Analytics.class) {
         if (singleton == null) {
           String writeKey = getResourceString(context, WRITE_KEY_RESOURCE_IDENTIFIER);
-          Builder builder = new Builder(context, writeKey);
+          String endpoint = getResourceString(context, ENDPOINT_RESOURCE_IDENTIFIER);
+          String cdn = getResourceString(context, CDN_RESOURCE_IDENTIFIER);
+          Builder builder = new Builder(context, writeKey, endpoint, cdn);
 
           try {
             String packageName = context.getPackageName();
@@ -958,6 +962,8 @@ public class Analytics {
   public static class Builder {
     private final Application application;
     private String writeKey;
+    private String endpoint;
+    private String cdn;
     private boolean collectDeviceID = Utils.DEFAULT_COLLECT_DEVICE_ID;
     private int flushQueueSize = Utils.DEFAULT_FLUSH_QUEUE_SIZE;
     private long flushIntervalInMillis = Utils.DEFAULT_FLUSH_INTERVAL;
@@ -973,7 +979,7 @@ public class Analytics {
     private Crypto crypto;
 
     /** Start building a new {@link Analytics} instance. */
-    public Builder(Context context, String writeKey) {
+    public Builder(Context context, String writeKey, String endpoint, String cdn) {
       if (context == null) {
         throw new IllegalArgumentException("Context must not be null.");
       }
@@ -989,6 +995,8 @@ public class Analytics {
         throw new IllegalArgumentException("writeKey must not be null or empty.");
       }
       this.writeKey = writeKey;
+      this.endpoint = endpoint;
+      this.cdn = cdn;
 
       factories = new ArrayList<>();
     }
@@ -1196,7 +1204,7 @@ public class Analytics {
 
       final Stats stats = new Stats();
       final Cartographer cartographer = Cartographer.INSTANCE;
-      final Client client = new Client(writeKey, connectionFactory);
+      final Client client = new Client(writeKey, endpoint, cdn, connectionFactory);
 
       ProjectSettings.Cache projectSettingsCache =
           new ProjectSettings.Cache(application, cartographer, tag);

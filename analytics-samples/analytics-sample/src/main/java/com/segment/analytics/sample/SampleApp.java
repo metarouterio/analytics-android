@@ -10,7 +10,9 @@ import uk.co.chrisjenx.calligraphy.CalligraphyConfig;
 public class SampleApp extends Application {
 
   // https://segment.com/segment-engineering/sources/android-test/settings/keys
-  private static final String ANALYTICS_WRITE_KEY = "M22kc6xTTPyKmpfFg";
+  private static final String ANALYTICS_WRITE_KEY = "nb7wx3PWsvziPMfKeLP9E";
+  private static final String API_ENDPOINT = "api.houston.astronomer.io";
+  private static final String CDN = "cdn.houston.astronomer.io";
 
   @Override public void onCreate() {
     super.onCreate();
@@ -21,7 +23,7 @@ public class SampleApp extends Application {
             .build());
 
     // Initialize a new instance of the Analytics client.
-    Analytics.Builder builder = new Analytics.Builder(this, ANALYTICS_WRITE_KEY) //
+    Analytics.Builder builder = new Analytics.Builder(this, ANALYTICS_WRITE_KEY, API_ENDPOINT, CDN) //
         .trackApplicationLifecycleEvents() //
         .trackAttributionInformation() //
         .recordScreenViews();
