@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014 Segment, Inc.
+ * Copyright (c) 2014 Segment.io, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 package com.segment.analytics;
 
 import android.annotation.SuppressLint;
@@ -31,8 +30,8 @@ import java.io.IOException;
 
 /**
  * A {@link WearableListenerService} that listens for analytics events from a wear device.
- * <p/>
- * Clients may subclass this and override {@link #getAnalytics()} to provide custom instances of
+ *
+ * <p>Clients may subclass this and override {@link #getAnalytics()} to provide custom instances of
  * {@link Analytics} client. Ideally, it should be the same instance as the client you're using to
  * track events on the host Android device.
  */
@@ -41,7 +40,8 @@ public class PhoneAnalyticsListenerService extends WearableListenerService {
 
   final Cartographer cartographer = Cartographer.INSTANCE;
 
-  @Override public void onMessageReceived(MessageEvent messageEvent) {
+  @Override
+  public void onMessageReceived(MessageEvent messageEvent) {
     super.onMessageReceived(messageEvent);
 
     if (WearAnalytics.ANALYTICS_PATH.equals(messageEvent.getPath())) {
@@ -49,7 +49,8 @@ public class PhoneAnalyticsListenerService extends WearableListenerService {
       try {
         wearPayload = new WearPayload(cartographer.fromJson(new String(messageEvent.getData())));
       } catch (IOException e) {
-        getAnalytics().getLogger()
+        getAnalytics()
+            .getLogger()
             .error(e, "Could not deserialize event %s", new String(messageEvent.getData()));
         return;
       }
@@ -60,8 +61,11 @@ public class PhoneAnalyticsListenerService extends WearableListenerService {
           break;
         case screen:
           WearScreenPayload wearScreenPayload = wearPayload.payload(WearScreenPayload.class);
-          getAnalytics().screen(wearScreenPayload.getName(), wearScreenPayload.getCategory(),
-              wearScreenPayload.getProperties());
+          getAnalytics()
+              .screen(
+                  wearScreenPayload.getName(),
+                  wearScreenPayload.getCategory(),
+                  wearScreenPayload.getProperties());
           break;
         default:
           throw new UnsupportedOperationException("Only track/screen calls may be sent from Wear.");

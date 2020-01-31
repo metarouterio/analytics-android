@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014 Segment, Inc.
+ * Copyright (c) 2014 Segment.io, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,8 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 package com.segment.analytics;
+
+import static com.segment.analytics.internal.Utils.getInputStream;
+import static com.segment.analytics.internal.Utils.readFully;
+import static java.net.HttpURLConnection.HTTP_OK;
 
 import android.text.TextUtils;
 import java.io.Closeable;
@@ -32,12 +35,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.util.zip.GZIPOutputStream;
 
-import static com.segment.analytics.internal.Utils.readFully;
-import static java.net.HttpURLConnection.HTTP_OK;
-
-/**
- * HTTP client which can upload payloads and fetch project settings from the Segment public API.
- */
+/** HTTP client which can upload payloads and fetch project settings from the Segment public API. */
 class Client {
 
   final ConnectionFactory connectionFactory;
@@ -53,13 +51,14 @@ class Client {
       outputStream = connection.getOutputStream();
     }
     return new Connection(connection, null, outputStream) {
-      @Override public void close() throws IOException {
+      @Override
+      public void close() throws IOException {
         try {
           int responseCode = connection.getResponseCode();
           if (responseCode >= 300) {
             String responseBody;
             try {
-              responseBody = readFully(connection.getInputStream());
+              responseBody = readFully(getInputStream(connection));
             } catch (IOException e) {
               responseBody = "Could not read response body for rejected message: " + e.toString();
             }
@@ -74,8 +73,9 @@ class Client {
   }
 
   private static Connection createGetConnection(HttpURLConnection connection) throws IOException {
-    return new Connection(connection, connection.getInputStream(), null) {
-      @Override public void close() throws IOException {
+    return new Connection(connection, getInputStream(connection), null) {
+      @Override
+      public void close() throws IOException {
         super.close();
         is.close();
       }
@@ -119,13 +119,17 @@ class Client {
       this.responseMessage = responseMessage;
       this.responseBody = responseBody;
     }
+
+    boolean is4xx() {
+      return responseCode >= 400 && responseCode < 500;
+    }
   }
 
   /**
    * Wraps an HTTP connection. Callers can either read from the connection via the {@link
    * InputStream} or write to the connection via {@link OutputStream}.
    */
-  static abstract class Connection implements Closeable {
+  abstract static class Connection implements Closeable {
     final HttpURLConnection connection;
     final InputStream is;
     final OutputStream os;
@@ -139,7 +143,8 @@ class Client {
       this.os = os;
     }
 
-    @Override public void close() throws IOException {
+    @Override
+    public void close() throws IOException {
       connection.disconnect();
     }
   }

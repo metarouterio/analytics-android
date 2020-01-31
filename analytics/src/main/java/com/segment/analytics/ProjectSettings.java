@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014 Segment, Inc.
+ * Copyright (c) 2014 Segment.io, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,14 +21,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 package com.segment.analytics;
+
+import static java.util.Collections.unmodifiableMap;
 
 import android.content.Context;
 import com.segment.analytics.internal.Private;
 import java.util.Map;
-
-import static java.util.Collections.unmodifiableMap;
 
 class ProjectSettings extends ValueMap {
 
@@ -42,7 +41,8 @@ class ProjectSettings extends ValueMap {
     return new ProjectSettings(map);
   }
 
-  @Private ProjectSettings(Map<String, Object> map) {
+  @Private
+  ProjectSettings(Map<String, Object> map) {
     super(unmodifiableMap(map));
   }
 
@@ -73,11 +73,16 @@ class ProjectSettings extends ValueMap {
     private static final String PROJECT_SETTINGS_CACHE_KEY_PREFIX = "project-settings-plan-";
 
     Cache(Context context, Cartographer cartographer, String tag) {
-      super(context, cartographer, PROJECT_SETTINGS_CACHE_KEY_PREFIX + tag, tag,
+      super(
+          context,
+          cartographer,
+          PROJECT_SETTINGS_CACHE_KEY_PREFIX + tag,
+          tag,
           ProjectSettings.class);
     }
 
-    @Override public ProjectSettings create(Map<String, Object> map) {
+    @Override
+    public ProjectSettings create(Map<String, Object> map) {
       return new ProjectSettings(map);
     }
   }

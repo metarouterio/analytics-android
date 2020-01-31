@@ -1,19 +1,48 @@
 apply plugin: 'com.android.application'
-apply plugin: 'checkstyle'
-apply plugin: 'com.f2prateek.checkstyle'
 
 apply from: rootProject.file('gradle/android.gradle')
 
-dependencies {
-  compile project(':analytics')
-  compile project(':analytics-wear')
+def WEBHOOK_AUTH_USERNAME = ""
+def RUN_E2E_TESTS = false
 
-  compile 'com.jakewharton:butterknife:8.4.0'
-  provided 'com.jakewharton:butterknife-compiler:8.4.0'
-  compile 'uk.co.chrisjenx:calligraphy:2.2.0'
+// e2e_test.properties is a file with a single line: WEBHOOK_AUTH_USERNAME=<token>
+def e2eTestPropertiesFile = file('e2e_test.properties')
+if (e2eTestPropertiesFile.exists()) {
+  def props = new Properties()
+  file(e2eTestPropertiesFile).withInputStream { stream -> props.load(stream) }
+  WEBHOOK_AUTH_USERNAME = props.getProperty("WEBHOOK_AUTH_USERNAME")
+  RUN_E2E_TESTS = true
 }
 
-checkstyle {
-  configFile rootProject.file('gradle/checkstyle.xml')
-  showViolations true
+android {
+  lintOptions {
+    // Since this is just a sample app, it's ok to ignore these warnings.
+    disable 'IconMissingDensityFolder', 'GoogleAppIndexingWarning', 'AllowBackup'
+  }
+
+  defaultConfig {
+    testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+
+    buildConfigField 'String', 'WEBHOOK_AUTH_USERNAME', "\"$WEBHOOK_AUTH_USERNAME\""
+    buildConfigField 'boolean', 'RUN_E2E_TESTS', "$RUN_E2E_TESTS"
+  }
+}
+
+dependencies {
+  implementation project(':analytics')
+  implementation project(':analytics-wear')
+
+  implementation 'uk.co.chrisjenx:calligraphy:2.2.0'
+  implementation 'com.jakewharton:butterknife:8.8.1'
+  annotationProcessor 'com.jakewharton:butterknife-compiler:8.8.1'
+
+  androidTestImplementation 'com.squareup.retrofit2:retrofit:2.3.0'
+  androidTestImplementation 'com.squareup.retrofit2:converter-moshi:2.3.0'
+
+  androidTestImplementation 'com.android.support:support-annotations:27.1.1'
+  androidTestImplementation 'com.android.support.test:runner:1.0.2'
+  androidTestImplementation 'com.android.support.test:rules:1.0.2'
+  androidTestImplementation 'com.segment.backo:backo:1.0.0'
+
+  androidTestImplementation 'org.assertj:assertj-core:1.7.1'
 }

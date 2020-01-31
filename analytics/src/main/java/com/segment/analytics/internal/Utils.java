@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014 Segment, Inc.
+ * Copyright (c) 2014 Segment.io, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,8 +21,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 package com.segment.analytics.internal;
+
+import static android.Manifest.permission.ACCESS_NETWORK_STATE;
+import static android.Manifest.permission.READ_PHONE_STATE;
+import static android.content.Context.CONNECTIVITY_SERVICE;
+import static android.content.Context.MODE_PRIVATE;
+import static android.content.Context.TELEPHONY_SERVICE;
+import static android.content.pm.PackageManager.FEATURE_TELEPHONY;
+import static android.content.pm.PackageManager.PERMISSION_GRANTED;
+import static android.os.Process.THREAD_PRIORITY_BACKGROUND;
+import static android.provider.Settings.Secure.ANDROID_ID;
+import static android.provider.Settings.Secure.getString;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -31,6 +41,8 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.Process;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import java.io.BufferedReader;
@@ -40,15 +52,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Array;
-import java.text.DateFormat;
+import java.net.HttpURLConnection;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.Locale;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -62,25 +74,12 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import static android.Manifest.permission.ACCESS_NETWORK_STATE;
-import static android.Manifest.permission.READ_PHONE_STATE;
-import static android.content.Context.CONNECTIVITY_SERVICE;
-import static android.content.Context.MODE_PRIVATE;
-import static android.content.Context.TELEPHONY_SERVICE;
-import static android.content.pm.PackageManager.FEATURE_TELEPHONY;
-import static android.content.pm.PackageManager.PERMISSION_GRANTED;
-import static android.os.Process.THREAD_PRIORITY_BACKGROUND;
-import static android.provider.Settings.Secure.ANDROID_ID;
-import static android.provider.Settings.Secure.getString;
-
 public final class Utils {
 
   public static final String THREAD_PREFIX = "Segment-";
   public static final int DEFAULT_FLUSH_INTERVAL = 30 * 1000; // 30s
   public static final int DEFAULT_FLUSH_QUEUE_SIZE = 20;
   public static final boolean DEFAULT_COLLECT_DEVICE_ID = true;
-  @SuppressLint("SimpleDateFormat") private static final DateFormat ISO_8601_DATE_FORMAT =
-      new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.US);
 
   /** Creates a mutable HashSet instance containing the given elements in unspecified order */
   public static <T> Set<T> newSet(T... values) {
@@ -89,21 +88,36 @@ public final class Utils {
     return set;
   }
 
-  /** Returns the date as a string formatted with {@link #ISO_8601_DATE_FORMAT}. */
+  /** @deprecated Use {@link #toISO8601String(Date)}. */
   public static String toISO8601Date(Date date) {
-    return ISO_8601_DATE_FORMAT.format(date);
+    return toISO8601String(date);
   }
 
-  /** Returns the string as a date parsed with {@link #ISO_8601_DATE_FORMAT}. */
-  public static Date toISO8601Date(String date) throws ParseException {
-    return ISO_8601_DATE_FORMAT.parse(date);
+  /** Returns {@code date} formatted as yyyy-MM-ddThh:mm:ss.sssZ */
+  public static String toISO8601String(Date date) {
+    return Iso8601Utils.format(date);
   }
-
-  //TODO: Migrate other coercion methods.
 
   /**
-   * Returns the float representation at {@code value} if it exists and is a float or can be
-   * coerced
+   * Parse a date from ISO-8601 formatted string. It expects a format
+   * [yyyy-MM-dd|yyyyMMdd][T(hh:mm[:ss[.sss]]|hhmm[ss[.sss]])]?[Z|[+-]hh:mm]]
+   *
+   * @param date ISO string to parse in the appropriate format.
+   * @return the parsed date
+   */
+  public static Date parseISO8601Date(String date) {
+    return Iso8601Utils.parse(date);
+  }
+
+  /** @deprecated Use {@link #parseISO8601Date(String)}. */
+  public static Date toISO8601Date(String date) throws ParseException {
+    return parseISO8601Date(date);
+  }
+
+  // TODO: Migrate other coercion methods.
+
+  /**
+   * Returns the float representation at {@code value} if it exists and is a float or can be coerced
    * to a float. Returns {@code defaultValue} otherwise.
    */
   public static float coerceToFloat(Object value, float defaultValue) {
@@ -132,19 +146,58 @@ public final class Utils {
   }
 
   /** Returns the system service for the given string. */
-  @SuppressWarnings("unchecked") public static <T> T getSystemService(Context context,
-      String serviceConstant) {
+  @SuppressWarnings("unchecked")
+  public static <T> T getSystemService(Context context, String serviceConstant) {
     return (T) context.getSystemService(serviceConstant);
   }
 
   /** Returns true if the string is null, or empty (once trimmed). */
   public static boolean isNullOrEmpty(CharSequence text) {
-    return TextUtils.isEmpty(text) || TextUtils.getTrimmedLength(text) == 0;
+    return isEmpty(text) || getTrimmedLength(text) == 0;
   }
 
-  /** Returns true if the collection or has a size 0. */
+  /**
+   * Returns true if the string is null or 0-length.
+   *
+   * <p>Copied from {@link TextUtils#isEmpty(CharSequence)}
+   *
+   * @param str the string to be examined
+   * @return true if str is null or zero length
+   */
+  private static boolean isEmpty(@Nullable CharSequence str) {
+    return str == null || str.length() == 0;
+  }
+
+  /**
+   * Returns the length that the specified CharSequence would have if spaces and control characters
+   * were trimmed from the start and end, as by {@link String#trim}.
+   *
+   * <p>Copied from {@link TextUtils#getTrimmedLength(CharSequence)}
+   */
+  private static int getTrimmedLength(@NonNull CharSequence s) {
+    int len = s.length();
+
+    int start = 0;
+    while (start < len && s.charAt(start) <= ' ') {
+      start++;
+    }
+
+    int end = len;
+    while (end > start && s.charAt(end - 1) <= ' ') {
+      end--;
+    }
+
+    return end - start;
+  }
+
+  /** Returns true if the collection is null or has a size of 0. */
   public static boolean isNullOrEmpty(Collection collection) {
     return collection == null || collection.size() == 0;
+  }
+
+  /** Returns true if the array is null or has a size of 0. */
+  public static <T> boolean isNullOrEmpty(T[] data) {
+    return data == null || data.length == 0;
   }
 
   /** Returns true if the map is null or empty, false otherwise. */
@@ -152,15 +205,63 @@ public final class Utils {
     return map == null || map.size() == 0;
   }
 
-  /** Creates a unique device id. */
+  /** Throws a {@link NullPointerException} if the given text is null or empty. */
+  @NonNull
+  public static String assertNotNullOrEmpty(String text, @Nullable String name) {
+    if (isNullOrEmpty(text)) {
+      throw new NullPointerException(name + " cannot be null or empty");
+    }
+    return text;
+  }
+
+  /** Throws a {@link NullPointerException} if the given map is null or empty. */
+  @NonNull
+  public static <K, V> Map<K, V> assertNotNullOrEmpty(Map<K, V> data, @Nullable String name) {
+    if (isNullOrEmpty(data)) {
+      throw new NullPointerException(name + " cannot be null or empty");
+    }
+    return data;
+  }
+
+  /** Throws a {@link NullPointerException} if the given object is null. */
+  @NonNull
+  public static <T> T assertNotNull(T object, String item) {
+    if (object == null) {
+      throw new NullPointerException(item + " == null");
+    }
+    return object;
+  }
+
+  /** Returns an immutable copy of the provided map. */
+  @NonNull
+  public static <K, V> Map<K, V> immutableCopyOf(@NonNull Map<K, V> map) {
+    return Collections.unmodifiableMap(new LinkedHashMap<>(map));
+  }
+
+  /** Returns an immutable copy of the provided list. */
+  @NonNull
+  public static <T> List<T> immutableCopyOf(@Nullable List<T> list) {
+    if (isNullOrEmpty(list)) {
+      return Collections.emptyList();
+    }
+    return Collections.unmodifiableList(new ArrayList<>(list));
+  }
+
+  /**
+   * Creates a unique device id. Suppresses `HardwareIds` lint warnings as we don't use this ID for
+   * identifying specific users. This is also what is required by the Segment spec.
+   */
+  @SuppressLint("HardwareIds")
   public static String getDeviceId(Context context) {
     String androidId = getString(context.getContentResolver(), ANDROID_ID);
-    if (!isNullOrEmpty(androidId) && !"9774d56d682e549c".equals(androidId) && !"unknown".equals(
-        androidId) && !"000000000000000".equals(androidId)) {
+    if (!isNullOrEmpty(androidId)
+        && !"9774d56d682e549c".equals(androidId)
+        && !"unknown".equals(androidId)
+        && !"000000000000000".equals(androidId)) {
       return androidId;
     }
 
-    // Serial number, guaranteed to be on all non phones in 2.3+
+    // Serial number, guaranteed to be on all non phones in 2.3+.
     if (!isNullOrEmpty(Build.SERIAL)) {
       return Build.SERIAL;
     }
@@ -168,6 +269,7 @@ public final class Utils {
     // Telephony ID, guaranteed to be on all phones, requires READ_PHONE_STATE permission
     if (hasPermission(context, READ_PHONE_STATE) && hasFeature(context, FEATURE_TELEPHONY)) {
       TelephonyManager telephonyManager = getSystemService(context, TELEPHONY_SERVICE);
+      @SuppressLint("MissingPermission")
       String telephonyId = telephonyManager.getDeviceId();
       if (!isNullOrEmpty(telephonyId)) {
         return telephonyId;
@@ -204,9 +306,10 @@ public final class Utils {
    */
   public static boolean isConnected(Context context) {
     if (!hasPermission(context, ACCESS_NETWORK_STATE)) {
-      return true; // assume we have the connection and try to upload
+      return true; // Assume we have a connection and try to upload.
     }
     ConnectivityManager cm = getSystemService(context, CONNECTIVITY_SERVICE);
+    @SuppressLint("MissingPermission")
     NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
     return activeNetwork != null && activeNetwork.isConnectedOrConnecting();
   }
@@ -227,7 +330,9 @@ public final class Utils {
    * this will quietly ignore it. Does nothing if {@code closeable} is {@code null}.
    */
   public static void closeQuietly(Closeable closeable) {
-    if (closeable == null) return;
+    if (closeable == null) {
+      return;
+    }
     try {
       closeable.close();
     } catch (IOException ignored) {
@@ -253,15 +358,21 @@ public final class Utils {
     return sb.toString();
   }
 
+  public static InputStream getInputStream(HttpURLConnection connection) throws IOException {
+    try {
+      return connection.getInputStream();
+    } catch (IOException ignored) {
+      return connection.getErrorStream();
+    }
+  }
+
   /**
    * Transforms the given map by replacing the keys mapped by {@code mapper}. Any keys not in the
    * mapper preserve their original keys. If a key in the mapper maps to null or a blank string,
    * that value is dropped.
    *
-   * e.g. transform({a: 1, b: 2, c: 3}, {a: a, c: ""}) -> {$a: 1, b: 2}
-   * - transforms a to $a
-   * - keeps b
-   * - removes c
+   * <p>e.g. transform({a: 1, b: 2, c: 3}, {a: a, c: ""}) -> {$a: 1, b: 2} - transforms a to $a -
+   * keeps b - removes c
    */
   public static <T> Map<String, T> transform(Map<String, T> in, Map<String, String> mapper) {
     Map<String, T> out = new LinkedHashMap<>(in.size());
@@ -299,19 +410,17 @@ public final class Utils {
 
   /**
    * Wraps the given object if necessary. {@link JSONObject#wrap(Object)} is only available on API
-   * 19+, so we've copied the implementation. Deviates from the original implementation in
-   * that it always returns {@link JSONObject#NULL} instead of {@code null} in case of a failure,
-   * and returns the {@link Object#toString} of any object that is of a custom (non-primitive or
+   * 19+, so we've copied the implementation. Deviates from the original implementation in that it
+   * always returns {@link JSONObject#NULL} instead of {@code null} in case of a failure, and
+   * returns the {@link Object#toString} of any object that is of a custom (non-primitive or
    * non-collection/map) type.
    *
-   * <p>If the object is null or , returns {@link JSONObject#NULL}.
-   * If the object is a {@link JSONArray} or {@link JSONObject}, no wrapping is necessary.
-   * If the object is {@link JSONObject#NULL}, no wrapping is necessary.
-   * If the object is an array or {@link Collection}, returns an equivalent {@link JSONArray}.
-   * If the object is a {@link Map}, returns an equivalent {@link JSONObject}.
-   * If the object is a primitive wrapper type or {@link String}, returns the object.
-   * Otherwise returns the result of {@link Object#toString}.
-   * If wrapping fails, returns JSONObject.NULL.
+   * <p>If the object is null returns {@link JSONObject#NULL}. If the object is a {@link JSONArray}
+   * or {@link JSONObject}, no wrapping is necessary. If the object is {@link JSONObject#NULL}, no
+   * wrapping is necessary. If the object is an array or {@link Collection}, returns an equivalent
+   * {@link JSONArray}. If the object is a {@link Map}, returns an equivalent {@link JSONObject}. If
+   * the object is a primitive wrapper type or {@link String}, returns the object. Otherwise returns
+   * the result of {@link Object#toString}. If wrapping fails, returns JSONObject.NULL.
    */
   private static Object wrap(Object o) {
     if (o == null) {
@@ -402,31 +511,41 @@ public final class Utils {
    * user-supplied instance.
    */
   public static class AnalyticsNetworkExecutorService extends ThreadPoolExecutor {
+
     private static final int DEFAULT_THREAD_COUNT = 1;
     // At most we perform two network requests concurrently
     private static final int MAX_THREAD_COUNT = 2;
 
     public AnalyticsNetworkExecutorService() {
       //noinspection Convert2Diamond
-      super(DEFAULT_THREAD_COUNT, MAX_THREAD_COUNT, 0, TimeUnit.MILLISECONDS,
-          new LinkedBlockingQueue<Runnable>(), new AnalyticsThreadFactory());
+      super(
+          DEFAULT_THREAD_COUNT,
+          MAX_THREAD_COUNT,
+          0,
+          TimeUnit.MILLISECONDS,
+          new LinkedBlockingQueue<Runnable>(),
+          new AnalyticsThreadFactory());
     }
   }
 
   public static class AnalyticsThreadFactory implements ThreadFactory {
-    @SuppressWarnings("NullableProblems") public Thread newThread(Runnable r) {
+
+    @SuppressWarnings("NullableProblems")
+    public Thread newThread(Runnable r) {
       return new AnalyticsThread(r);
     }
   }
 
   private static class AnalyticsThread extends Thread {
+
     private static final AtomicInteger SEQUENCE_GENERATOR = new AtomicInteger(1);
 
     public AnalyticsThread(Runnable r) {
       super(r, THREAD_PREFIX + SEQUENCE_GENERATOR.getAndIncrement());
     }
 
-    @Override public void run() {
+    @Override
+    public void run() {
       Process.setThreadPriority(THREAD_PRIORITY_BACKGROUND);
       super.run();
     }
@@ -443,14 +562,16 @@ public final class Utils {
       super(m);
     }
 
-    @Override public V put(K key, V value) {
+    @Override
+    public V put(K key, V value) {
       if (key == null || value == null) {
         return null;
       }
       return super.put(key, value);
     }
 
-    @Override public void putAll(Map<? extends K, ? extends V> m) {
+    @Override
+    public void putAll(Map<? extends K, ? extends V> m) {
       for (Map.Entry<? extends K, ? extends V> e : m.entrySet()) {
         put(e.getKey(), e.getValue());
       }

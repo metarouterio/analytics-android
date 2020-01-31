@@ -1,7 +1,7 @@
-/*
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2014 Segment, Inc.
+ * Copyright (c) 2014 Segment.io, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,17 +21,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 package com.segment.analytics;
 
+import static com.segment.analytics.internal.Utils.isNullOrEmpty;
+
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 /**
  * Properties are a dictionary of free-form information to attach to specific events.
- * <p/>
- * Just like traits, we also accept some properties with semantic meaning, and you should only ever
- * use these property names for that purpose.
+ *
+ * <p>Just like traits, we also accept some properties with semantic meaning, and you should only
+ * ever use these property names for that purpose.
  */
 public class Properties extends ValueMap {
 
@@ -60,8 +63,7 @@ public class Properties extends ValueMap {
   private static final String PRODUCTS_KEY = "products";
   private static final String REPEAT_KEY = "repeat";
 
-  public Properties() {
-  }
+  public Properties() {}
 
   public Properties(int initialCapacity) {
     super(initialCapacity);
@@ -72,14 +74,15 @@ public class Properties extends ValueMap {
     super(delegate);
   }
 
-  @Override public Properties putValue(String key, Object value) {
+  @Override
+  public Properties putValue(String key, Object value) {
     super.putValue(key, value);
     return this;
   }
 
   /**
-   * Set the amount of revenue an event resulted in. This should be a decimal value in dollars, so
-   * a shirt worth $19.99 would result in a revenue of 19.99.
+   * Set the amount of revenue an event resulted in. This should be a decimal value in dollars, so a
+   * shirt worth $19.99 would result in a revenue of 19.99.
    */
   public Properties putRevenue(double revenue) {
     return putValue(REVENUE_KEY, revenue);
@@ -91,8 +94,8 @@ public class Properties extends ValueMap {
 
   /**
    * Set an abstract value to associate with an event. This is typically used in situations where
-   * the event doesn’t generate real-dollar revenue, but has an intrinsic value to a marketing
-   * team, like newsletter signups.
+   * the event doesn't generate real-dollar revenue, but has an intrinsic value to a marketing team,
+   * like newsletter signups.
    */
   public Properties putValue(double value) {
     return putValue(VALUE_KEY, value);
@@ -182,8 +185,8 @@ public class Properties extends ValueMap {
   }
 
   /**
-   * Set a category for this action. You’ll want to track all of your product category pages so
-   * you can quickly see which categories are most popular.
+   * Set a category for this action. You'll want to track all of your product category pages so you
+   * can quickly see which categories are most popular.
    *
    * @see <a href="https://segment.com/docs/api/tracking/ecommerce/">Ecommerce API</a>
    */
@@ -278,7 +281,13 @@ public class Properties extends ValueMap {
     return putValue(SUBTOTAL_KEY, subtotal);
   }
 
+  /** @deprecated use {@link #subtotal()} */
+  @Deprecated
   public double putSubtotal() {
+    return subtotal();
+  }
+
+  public double subtotal() {
     return getDouble(SUBTOTAL_KEY, 0);
   }
 
@@ -330,16 +339,30 @@ public class Properties extends ValueMap {
     return putValue(COUPON_KEY, coupon);
   }
 
+  public String coupon() {
+    return getString(COUPON_KEY);
+  }
+
   /**
    * Set the individual products for an order associated with an event.
    *
    * @see <a href="https://segment.com/docs/api/tracking/ecommerce/">Ecommerce API</a>
    */
   public Properties putProducts(Product... products) {
-    return putValue(PRODUCTS_KEY, products);
+    if (isNullOrEmpty(products)) {
+      throw new IllegalArgumentException("products cannot be null or empty.");
+    }
+    List<Product> productList = new ArrayList<>(products.length);
+    Collections.addAll(productList, products);
+    return putValue(PRODUCTS_KEY, Collections.unmodifiableList(productList));
   }
 
+  /** @deprecated Use {@link #products()} instead. */
   public List<Product> products(Product... products) {
+    return products();
+  }
+
+  public List<Product> products() {
     return getList(PRODUCTS_KEY, Product.class);
   }
 
@@ -358,9 +381,9 @@ public class Properties extends ValueMap {
 
   /**
    * A representation of an e-commerce product.
-   * <p/>
-   * Use this only when you have multiple products, usually for the "Completed Order" event. If you
-   * have only one product, {@link Properties} has methods on it directly to attach this
+   *
+   * <p>Use this only when you have multiple products, usually for the "Completed Order" event. If
+   * you have only one product, {@link Properties} has methods on it directly to attach this
    * information.
    */
   public static class Product extends ValueMap {
@@ -410,7 +433,8 @@ public class Properties extends ValueMap {
       return getDouble(PRICE_KEY, 0);
     }
 
-    @Override public Product putValue(String key, Object value) {
+    @Override
+    public Product putValue(String key, Object value) {
       super.putValue(key, value);
       return this;
     }

@@ -1,4 +1,30 @@
+/**
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2014 Segment.io, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.segment.analytics;
+
+import static com.segment.analytics.internal.Utils.getSegmentSharedPreferences;
+import static com.segment.analytics.internal.Utils.isNullOrEmpty;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -14,18 +40,15 @@ import java.util.Map;
 import java.util.Set;
 import org.json.JSONObject;
 
-import static com.segment.analytics.internal.Utils.getSegmentSharedPreferences;
-import static com.segment.analytics.internal.Utils.isNullOrEmpty;
-
 /**
  * A class that wraps an existing {@link Map} to expose value type functionality. All {@link
  * java.util.Map} methods will simply be forwarded to a delegate map. This class is meant to
  * subclassed and provide methods to access values in keys.
- * <p/>
- * Library users won't need to create instances of this class, they can use plain old {@link Map}
+ *
+ * <p>Library users won't need to create instances of this class, they can use plain old {@link Map}
  * instead, and our library will handle serializing them.
- * <p/>
- * Although it lets you use custom objects for values, note that type information is lost during
+ *
+ * <p>Although it lets you use custom objects for values, note that type information is lost during
  * serialization. You should use one of the coercion methods instead to get objects of a concrete
  * type.
  */
@@ -63,64 +86,79 @@ public class ValueMap implements Map<String, Object> {
     this.delegate = map;
   }
 
-  @Override public void clear() {
+  @Override
+  public void clear() {
     delegate.clear();
   }
 
-  @Override public boolean containsKey(Object key) {
+  @Override
+  public boolean containsKey(Object key) {
     return delegate.containsKey(key);
   }
 
-  @Override public boolean containsValue(Object value) {
+  @Override
+  public boolean containsValue(Object value) {
     return delegate.containsValue(value);
   }
 
-  @Override public Set<Entry<String, Object>> entrySet() {
+  @Override
+  public Set<Entry<String, Object>> entrySet() {
     return delegate.entrySet();
   }
 
-  @Override public Object get(Object key) {
+  @Override
+  public Object get(Object key) {
     return delegate.get(key);
   }
 
-  @Override public boolean isEmpty() {
+  @Override
+  public boolean isEmpty() {
     return delegate.isEmpty();
   }
 
-  @Override public Set<String> keySet() {
+  @Override
+  public Set<String> keySet() {
     return delegate.keySet();
   }
 
-  @Override public Object put(String key, Object value) {
+  @Override
+  public Object put(String key, Object value) {
     return delegate.put(key, value);
   }
 
-  @Override public void putAll(Map<? extends String, ?> map) {
+  @Override
+  public void putAll(Map<? extends String, ?> map) {
     delegate.putAll(map);
   }
 
-  @Override public Object remove(Object key) {
+  @Override
+  public Object remove(Object key) {
     return delegate.remove(key);
   }
 
-  @Override public int size() {
+  @Override
+  public int size() {
     return delegate.size();
   }
 
-  @Override public Collection<Object> values() {
+  @Override
+  public Collection<Object> values() {
     return delegate.values();
   }
 
   @SuppressWarnings("EqualsWhichDoesntCheckParameterClass") //
-  @Override public boolean equals(Object object) {
+  @Override
+  public boolean equals(Object object) {
     return object == this || delegate.equals(object);
   }
 
-  @Override public int hashCode() {
+  @Override
+  public int hashCode() {
     return delegate.hashCode();
   }
 
-  @Override public String toString() {
+  @Override
+  public String toString() {
     return delegate.toString();
   }
 
@@ -151,8 +189,7 @@ public class ValueMap implements Map<String, Object> {
   }
 
   /**
-   * Returns the value mapped by {@code key} if it exists and is a long or can be coerced to a
-   * long.
+   * Returns the value mapped by {@code key} if it exists and is a long or can be coerced to a long.
    * Returns {@code defaultValue} otherwise.
    */
   public long getLong(String key, long defaultValue) {
@@ -201,8 +238,7 @@ public class ValueMap implements Map<String, Object> {
   }
 
   /**
-   * Returns the value mapped by {@code key} if it exists and is a char or can be coerced to a
-   * char.
+   * Returns the value mapped by {@code key} if it exists and is a char or can be coerced to a char.
    * Returns {@code defaultValue} otherwise.
    */
   public char getChar(String key, char defaultValue) {
@@ -221,8 +257,8 @@ public class ValueMap implements Map<String, Object> {
   /**
    * Returns the value mapped by {@code key} if it exists and is a string or can be coerced to a
    * string. Returns null otherwise.
-   * <p/>
-   * This will return null only if the value does not exist, since all types can have a String
+   *
+   * <p>This will return null only if the value does not exist, since all types can have a String
    * representation.
    */
   public String getString(String key) {
@@ -385,11 +421,8 @@ public class ValueMap implements Map<String, Object> {
 
     void set(T value) {
       this.value = value;
-      try {
-        String json = cartographer.toJson(value);
-        preferences.edit().putString(key, json).apply();
-      } catch (IOException ignored) {
-      }
+      String json = cartographer.toJson(value);
+      preferences.edit().putString(key, json).apply();
     }
 
     void delete() {

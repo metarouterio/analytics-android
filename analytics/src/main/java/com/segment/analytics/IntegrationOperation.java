@@ -1,4 +1,30 @@
+/**
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2014 Segment.io, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.segment.analytics;
+
+import static com.segment.analytics.Options.ALL_INTEGRATIONS_KEY;
+import static com.segment.analytics.internal.Utils.isNullOrEmpty;
 
 import android.app.Activity;
 import android.os.Bundle;
@@ -8,12 +34,11 @@ import com.segment.analytics.integrations.IdentifyPayload;
 import com.segment.analytics.integrations.Integration;
 import com.segment.analytics.integrations.ScreenPayload;
 import com.segment.analytics.integrations.TrackPayload;
-
-import static com.segment.analytics.Options.ALL_INTEGRATIONS_KEY;
-import static com.segment.analytics.internal.Utils.isNullOrEmpty;
+import com.segment.analytics.internal.Private;
 
 /** Abstraction for a task that a {@link Integration <?>} can execute. */
 abstract class IntegrationOperation {
+  @Private
   static boolean isIntegrationEnabled(ValueMap integrations, String key) {
     if (isNullOrEmpty(integrations)) {
       return true;
@@ -30,16 +55,6 @@ abstract class IntegrationOperation {
     return enabled;
   }
 
-  static boolean isIntegrationEnabledInPlan(ValueMap plan, String key) {
-    boolean eventEnabled = plan.getBoolean("enabled", true);
-    if (eventEnabled) {
-      // Check if there is an integration specific setting.
-      ValueMap integrationPlan = plan.getValueMap("integrations");
-      eventEnabled = isIntegrationEnabled(integrationPlan, key);
-    }
-    return eventEnabled;
-  }
-
   static IntegrationOperation onActivityCreated(final Activity activity, final Bundle bundle) {
     return new IntegrationOperation() {
       @Override
@@ -47,7 +62,8 @@ abstract class IntegrationOperation {
         integration.onActivityCreated(activity, bundle);
       }
 
-      @Override public String toString() {
+      @Override
+      public String toString() {
         return "Activity Created";
       }
     };
@@ -60,7 +76,8 @@ abstract class IntegrationOperation {
         integration.onActivityStarted(activity);
       }
 
-      @Override public String toString() {
+      @Override
+      public String toString() {
         return "Activity Started";
       }
     };
@@ -73,7 +90,8 @@ abstract class IntegrationOperation {
         integration.onActivityResumed(activity);
       }
 
-      @Override public String toString() {
+      @Override
+      public String toString() {
         return "Activity Resumed";
       }
     };
@@ -86,7 +104,8 @@ abstract class IntegrationOperation {
         integration.onActivityPaused(activity);
       }
 
-      @Override public String toString() {
+      @Override
+      public String toString() {
         return "Activity Paused";
       }
     };
@@ -99,21 +118,23 @@ abstract class IntegrationOperation {
         integration.onActivityStopped(activity);
       }
 
-      @Override public String toString() {
+      @Override
+      public String toString() {
         return "Activity Stopped";
       }
     };
   }
 
-  static IntegrationOperation onActivitySaveInstanceState(final Activity activity,
-      final Bundle bundle) {
+  static IntegrationOperation onActivitySaveInstanceState(
+      final Activity activity, final Bundle bundle) {
     return new IntegrationOperation() {
       @Override
       public void run(String key, Integration<?> integration, ProjectSettings projectSettings) {
         integration.onActivitySaveInstanceState(activity, bundle);
       }
 
-      @Override public String toString() {
+      @Override
+      public String toString() {
         return "Activity Save Instance";
       }
     };
@@ -126,7 +147,8 @@ abstract class IntegrationOperation {
         integration.onActivityDestroyed(activity);
       }
 
-      @Override public String toString() {
+      @Override
+      public String toString() {
         return "Activity Destroyed";
       }
     };
@@ -141,7 +163,8 @@ abstract class IntegrationOperation {
         }
       }
 
-      @Override public String toString() {
+      @Override
+      public String toString() {
         return identifyPayload.toString();
       }
     };
@@ -156,7 +179,8 @@ abstract class IntegrationOperation {
         }
       }
 
-      @Override public String toString() {
+      @Override
+      public String toString() {
         return groupPayload.toString();
       }
     };
@@ -178,20 +202,42 @@ abstract class IntegrationOperation {
         }
 
         String event = trackPayload.event();
+
         ValueMap eventPlan = trackingPlan.getValueMap(event);
         if (isNullOrEmpty(eventPlan)) {
-          // No event plan, use options provided.
-          if (isIntegrationEnabled(integrationOptions, key)) {
+          if (!isNullOrEmpty(integrationOptions)) {
+            // No event plan, use options provided.
+            if (isIntegrationEnabled(integrationOptions, key)) {
+              integration.track(trackPayload);
+            }
+            return;
+          }
+
+          // Use schema defaults if no options are provided.
+          ValueMap defaultPlan = trackingPlan.getValueMap("__default");
+
+          // No defaults, send the event.
+          if (isNullOrEmpty(defaultPlan)) {
+            integration.track(trackPayload);
+            return;
+          }
+
+          // Send the event if new events are enabled or if this is the Segment integration.
+          boolean defaultEventsEnabled = defaultPlan.getBoolean("enabled", true);
+          if (defaultEventsEnabled || SegmentIntegration.SEGMENT_KEY.equals(key)) {
             integration.track(trackPayload);
           }
+
           return;
         }
 
         // We have a tracking plan for the event.
         boolean isEnabled = eventPlan.getBoolean("enabled", true);
         if (!isEnabled) {
-          // If event is disabled in the tracking plan, don't send it to any
-          // integrations (Segment included), regardless of options in code.
+          // If event is disabled in the tracking plan, send it only Segment.
+          if (SegmentIntegration.SEGMENT_KEY.equals(key)) {
+            integration.track(trackPayload);
+          }
           return;
         }
 
@@ -206,7 +252,8 @@ abstract class IntegrationOperation {
         }
       }
 
-      @Override public String toString() {
+      @Override
+      public String toString() {
         return trackPayload.toString();
       }
     };
@@ -221,7 +268,8 @@ abstract class IntegrationOperation {
         }
       }
 
-      @Override public String toString() {
+      @Override
+      public String toString() {
         return screenPayload.toString();
       }
     };
@@ -236,34 +284,40 @@ abstract class IntegrationOperation {
         }
       }
 
-      @Override public String toString() {
+      @Override
+      public String toString() {
         return aliasPayload.toString();
       }
     };
   }
 
-  static final IntegrationOperation FLUSH = new IntegrationOperation() {
-    @Override void run(String key, Integration<?> integration, ProjectSettings projectSettings) {
-      integration.flush();
-    }
+  static final IntegrationOperation FLUSH =
+      new IntegrationOperation() {
+        @Override
+        void run(String key, Integration<?> integration, ProjectSettings projectSettings) {
+          integration.flush();
+        }
 
-    @Override public String toString() {
-      return "Flush";
-    }
-  };
+        @Override
+        public String toString() {
+          return "Flush";
+        }
+      };
 
-  static final IntegrationOperation RESET = new IntegrationOperation() {
-    @Override void run(String key, Integration<?> integration, ProjectSettings projectSettings) {
-      integration.reset();
-    }
+  static final IntegrationOperation RESET =
+      new IntegrationOperation() {
+        @Override
+        void run(String key, Integration<?> integration, ProjectSettings projectSettings) {
+          integration.reset();
+        }
 
-    @Override public String toString() {
-      return "Reset";
-    }
-  };
+        @Override
+        public String toString() {
+          return "Reset";
+        }
+      };
 
-  private IntegrationOperation() {
-  }
+  private IntegrationOperation() {}
 
   /** Run this operation on the given integration. */
   abstract void run(String key, Integration<?> integration, ProjectSettings projectSettings);

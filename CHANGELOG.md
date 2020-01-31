@@ -1,3 +1,126 @@
+Changelog
+=========
+
+Version 4.5.0-beta.1 (Dec 16, 2019)
+===================================
+
+ * [New](https://github.com/segmentio/analytics-android/pull/637): Track "Deep Link Opened" on activity creation
+ 
+Version 4.5.0-beta.0 (July 25, 2019)
+===================================
+
+ * [New](https://github.com/segmentio/analytics-android/pull/620): Add Application Open and Application Backgrounded Events
+
+Version 4.4.0-beta1 (Nov 28, 2018)
+==================================
+
+ * [Fix](https://github.com/segmentio/analytics-android/pull/574): Send application build number as a string to match our documentation and other libraries. If you were relying on this field being a number, you may need to update reports that rely on the now deprecated behaviour. You can also override this behaviour and keep the deprecated behaviour by supplying the `build` field manually.
+
+ ```java
+ PackageManager packageManager = context.getPackageManager();
+ PackageInfo packageInfo = packageManager.getPackageInfo(context.getPackageName(), 0);
+ Map<String, Object> app = new LinkedHashMap<>();
+
+ // Put the build as an integer instead of string.
+ app.put("build", packageInfo.versionCode);
+
+ // Put other application context fields that the library collects. Not shown in this example, but you should filter out any null fields.
+ app.put("name", packageInfo.applicationInfo.loadLabel(packageManager));
+ app.put("version", packageInfo.versionName);
+ app.put("namespace", packageInfo.packageName);
+
+ analytics.getAnalyticsContext().put("app", app);
+ ```
+
+ * [New](https://github.com/segmentio/analytics-android/pull/595): Add `Options#putContext` method. This allows you to send context fields for a single event. This can also override default context fields for a single event.
+
+ ```java
+ analytics.track("My Event", properties, new Options().putContext("custom_context_field", true));
+ ```
+
+ * [New](https://github.com/segmentio/analytics-android/pull/582): Send a custom user agent on HTTP requests originating the library. The new user-agent will be formatted as `analytics-android/{version}`.
+
+ * [Fix](https://github.com/segmentio/analytics-android/pull/578): Retry network requests when server responds with a HTTP 429 response code.
+
+ * [Fix](https://github.com/segmentio/analytics-android/pull/575): Update maximum message limit to be 32kb to match our API limits.
+
+ * [Fix](https://github.com/segmentio/analytics-android/pull/573): Fix race condition that could cause events to pick up user IDs after the event was originally recorded.
+
+Version 4.3.1 (Nov 28, 2017)
+=============================
+
+ * [Fix](https://github.com/segmentio/analytics-android/pull/547): Rename `Properties#putSubtotal` helper to `Properties#subtotal`.
+ * [New](https://github.com/segmentio/analytics-android/pull/550): Send disabled events to Segment's API so that it can be surfaced in the debugger. These events will not be sent to any destination.
+ * [New](https://github.com/segmentio/analytics-android/pull/552): Add support for schema defaults.
+ * [Fix](https://github.com/segmentio/analytics-android/pull/537): Show better errors for unexpected 3xx response codes.
+
+
+Version 4.3.0 (Oct 2nd, 2017)
+=============================
+
+ * Promoting RC to stable release. This includes all the improvements from 4.3.0-RC1 and 4.3.0-RC2.
+
+
+Version 4.3.0-RC2 (July 25th, 2017)
+===================================
+
+ * [New](https://github.com/segmentio/analytics-android/pull/536): Look up Advertising ID for Amazon Fire devices.
+ * [Fix](https://github.com/segmentio/analytics-android/pull/534): Attribution tracking using mobile service should be false by default.
+
+
+Version 4.3.0-RC1 (May 10th, 2017)
+==================================
+ * [New](https://github.com/segmentio/analytics-android/pull/515): Add Middlewares.
+ * [Fix](https://github.com/segmentio/analytics-android/pull/524): Unregister Application lifecycle callbacks on shutdown.
+ * [Fix](https://github.com/segmentio/analytics-android/pull/499): Record `ms` precision in timestamps.
+ * [Fix](https://github.com/segmentio/analytics-android/pull/508): Support serialization of Primitive arrays.
+
+
+Version 4.2.6 (January 31st, 2017)
+==================================
+
+ * [Fix](https://github.com/segmentio/analytics-android/pull/495): Update Cartographer. This fixes an issue where sending custom values sent as arrays would not be serialized correctly.
+ * [Fix](https://github.com/segmentio/analytics-android/pull/494): Make DateFormat access thread safe. This fixes an issue where generated timestamps could be sometimes be malformed and not conform to the ISO 8601 standard.
+
+
+Version 4.2.5 (January 2nd, 2017)
+==================================
+
+ * [Fix](https://github.com/segmentio/analytics-android/pull/487/commits/8649050b4b7b74be17fc7b7e4ec0add7362325fd): Using `Properties#putProducts` was stored as an array instead of a list, and not serialized correctly. This caused it to be usable by Segment and server side integrations. If you're stuck on a previous version for some reason, you can manually store it as a list:
+
+ ```java
+ List<Product> products = new ArrayList<>();
+ products.add(new Product("foo", "bar", 10));
+ // add other products to this list.
+
+ Properties properties = new Properties();
+ properties.put("products", products);
+ ```
+
+
+Version 4.2.4 (November 14th, 2016)
+==================================
+
+ * [Fix](https://github.com/segmentio/analytics-android/pull/484): Version 4.2.2 introduced a change where a default application wide cache was being installed for HTTPURLConnection requests. If you were not using an HTTP cache already or relying on this behaviour, this may have resulted in unintended caching behaviour for your application. This fix returns to the behaviour before 4.2.2, where this library does not install a cache. You may continue to choose to install an application level cache for HTTPURLConnection if you wish.
+
+
+Version 4.2.3 (November 4th, 2016)
+==================================
+
+  * [Improvement]: Update CDN hostname from `cdn.segment.com` to `cdn-settings.segment.com`. This endpoint has been added to improve performance for mobile clients.
+
+
+Version 4.2.2 (October 13th, 2016)
+====================================
+
+  * [Fix](https://github.com/segmentio/analytics-android/pull/479): Rely on HTTP cache for caching settings responses. This fixes a regression introduced in [version 4.1.4](https://github.com/segmentio/analytics-android/pull/448), where cached settings responses were not being used, and would always be fetched from the network.
+
+
+Version 4.2.1 (October 7th, 2016)
+====================================
+
+  * [Fix](https://github.com/segmentio/analytics-android/pull/476): Use Application Opened instead of Application Started.
+  * [Improvement](https://github.com/segmentio/analytics-android/pull/475): Update Google Play Services for Android wear module.
 
 Version 4.2.0 (September 19th, 2016)
 ====================================

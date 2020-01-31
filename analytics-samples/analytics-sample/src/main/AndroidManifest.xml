@@ -31,9 +31,6 @@
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
   <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
-  <!-- Allow you to get LOGCAT information when a crash occurs. -->
-  <uses-permission android:name="android.permission.READ_LOGS"/>
-
   <!-- Allow you to see which activity was active when a crash occurs. -->
   <uses-permission android:name="android.permission.GET_TASKS"/>
 
@@ -62,7 +59,9 @@
     <service
         android:name="com.segment.analytics.PhoneAnalyticsListenerService">
       <intent-filter>
-        <action android:name="com.google.android.gms.wearable.BIND_LISTENER"/>
+        <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+        <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+        <data android:scheme="wear" android:host="*" android:pathPrefix="/analytics" />
       </intent-filter>
     </service>
 

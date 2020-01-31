@@ -1,4 +1,29 @@
+/**
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2014 Segment.io, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.segment.analytics;
+
+import static android.os.Process.THREAD_PRIORITY_BACKGROUND;
 
 import android.content.Context;
 import android.os.Handler;
@@ -11,11 +36,8 @@ import com.google.android.gms.wearable.Node;
 import com.google.android.gms.wearable.NodeApi;
 import com.google.android.gms.wearable.Wearable;
 import com.segment.analytics.internal.Utils;
-import java.io.IOException;
 import java.util.Collection;
 import java.util.HashSet;
-
-import static android.os.Process.THREAD_PRIORITY_BACKGROUND;
 
 class WearDispatcher {
 
@@ -42,14 +64,14 @@ class WearDispatcher {
     googleApiClient.blockingConnect();
 
     for (String node : getNodes(googleApiClient)) {
-      try {
-        MessageApi.SendMessageResult result =
-            Wearable.MessageApi.sendMessage(googleApiClient, node, WearAnalytics.ANALYTICS_PATH,
-                cartographer.toJson(payload).getBytes()).await();
-        if (!result.getStatus().isSuccess()) {
-          // todo: log error
-        }
-      } catch (IOException e) {
+      MessageApi.SendMessageResult result =
+          Wearable.MessageApi.sendMessage(
+                  googleApiClient,
+                  node,
+                  WearAnalytics.ANALYTICS_PATH,
+                  cartographer.toJson(payload).getBytes())
+              .await();
+      if (!result.getStatus().isSuccess()) {
         // todo: log error
       }
     }
@@ -75,18 +97,21 @@ class WearDispatcher {
       this.wearDispatcher = wearDispatcher;
     }
 
-    @Override public void handleMessage(final Message msg) {
+    @Override
+    public void handleMessage(final Message msg) {
       switch (msg.what) {
         case REQUEST_DISPATCH:
           WearPayload payload = (WearPayload) msg.obj;
           wearDispatcher.performDispatch(payload);
           break;
         default:
-          Analytics.HANDLER.post(new Runnable() {
-            @Override public void run() {
-              throw new AssertionError("Unhandled dispatcher message." + msg.what);
-            }
-          });
+          Analytics.HANDLER.post(
+              new Runnable() {
+                @Override
+                public void run() {
+                  throw new AssertionError("Unhandled dispatcher message." + msg.what);
+                }
+              });
       }
     }
   }
