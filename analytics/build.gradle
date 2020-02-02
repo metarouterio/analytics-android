@@ -24,4 +24,17 @@ dependencies {
 }
 
 apply from: rootProject.file('gradle/attach-jar.gradle')
-apply from: rootProject.file('gradle/gradle-mvn-push.gradle')
+// apply from: rootProject.file('gradle/gradle-mvn-push.gradle')
+apply from: rootProject.file('gradle/publish.gradle')
+
+tasks.whenTaskAdded { task ->
+  if (task.name.equals("lint")) {
+    //this is for speed up build
+    task.enabled = false
+  }
+  if(task.name.contains("Test"))
+  {
+    //this is what you need
+    task.enabled = false
+  }
+}

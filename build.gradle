@@ -13,6 +13,10 @@ buildscript {
     classpath 'com.vanniktech:gradle-android-junit-jacoco-plugin:0.5.0'
     classpath 'com.diffplug.spotless:spotless-plugin-gradle:3.13.0'
     classpath 'com.getkeepsafe.dexcount:dexcount-gradle-plugin:0.6.2'
+
+    // Bintray and Maven Gradle Classpaths
+    classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.4'
+    classpath 'com.github.dcendents:android-maven-gradle-plugin:2.0'
   }
 }
 

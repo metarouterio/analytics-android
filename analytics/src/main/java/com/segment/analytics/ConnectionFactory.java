@@ -46,7 +46,7 @@ public class ConnectionFactory {
 
   /** Return a {@link HttpURLConnection} that reads JSON formatted project settings. */
   public HttpURLConnection projectSettings(String writeKey) throws IOException {
-    return openConnection("https://cdn.astronomer.io/v1/projects/" + writeKey + "/settings");
+    return openConnection("https://cdn.metarouter.io/v1/projects/" + writeKey + "/settings");
   }
 
   /**
@@ -54,7 +54,7 @@ public class ConnectionFactory {
    * https://api.segment.io/v1/import}.
    */
   public HttpURLConnection upload(String writeKey) throws IOException {
-    HttpURLConnection connection = openConnection("https://api.astronomer.io/v1/import");
+    HttpURLConnection connection = openConnection("https://api.metarouter.io/v1/import");
     connection.setRequestProperty("Authorization", authorizationHeader(writeKey));
     connection.setRequestProperty("Content-Encoding", "gzip");
     connection.setDoOutput(true);

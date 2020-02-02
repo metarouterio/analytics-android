@@ -25,8 +25,6 @@ package com.segment.analytics.sample;
 
 import android.app.Application;
 import android.util.Log;
-import android.widget.Toast;
-
 import com.segment.analytics.Analytics;
 import uk.co.chrisjenx.calligraphy.CalligraphyConfig;
 
@@ -65,7 +63,7 @@ public class SampleApp extends Application {
         new Analytics.Callback() {
           @Override
           public void onReady(Object instance) {
-            Log.d("Segment Sample", "Astronomer integration ready.");
+            Log.d("Segment Sample", "Metarouter integration ready.");
           }
         });
   }
