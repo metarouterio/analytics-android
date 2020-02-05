@@ -8,10 +8,11 @@ version = VERSION_NAME
 publishing {
     publications {
         Production(MavenPublication) {
+            artifact(sourcesJar)
             artifact("$buildDir/outputs/aar/analytics-release.aar")  {
                 builtBy tasks.getByName("assembleRelease")
             }
-            groupId
+            groupId GROUP
             artifactId 'MetarouterAnalytics'
             version this.version
 

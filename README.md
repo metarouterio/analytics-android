@@ -1,14 +1,14 @@
 analytics-android
 =================
 
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.segment.analytics.android/analytics/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.segment.analytics.android/analytics)
-[![Javadocs](http://javadoc-badge.appspot.com/com.segment.analytics.android/analytics.svg?label=javadoc)](http://javadoc-badge.appspot.com/com.segment.analytics.android/analytics)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.metarouter.analytics/analytics/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.metarouter.analytics/analytics)
+[![Javadocs](http://javadoc-badge.appspot.com/io.metarouter.analytics/analytics.svg?label=javadoc)](http://javadoc-badge.appspot.com/io.metarouter.analytics/analytics)
 
 analytics-android is an Android client for [Metarouter](https://metarouter.io)
 
 
 <div align="center">
-  <img src="https://user-images.githubusercontent.com/16131737/53615894-00237380-3b95-11e9-946c-5539d9835c64.png"/>
+  <img src="https://user-images.githubusercontent.com/1385202/73846201-ca6b1e00-482c-11ea-972a-b709fa625daf.png"/>
   <p><b><i>You can't fix what you can't measure</i></b></p>
 </div>
 
