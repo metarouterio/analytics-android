@@ -1,6 +1,83 @@
 Changelog
 =========
 
+Version 4.9.5 (July 2, 2021)
+* Rebranding
+
+Version 4.9.4 (May 3, 2021)
+============================
+* [Fix](https://github.com/segmentio/analytics-android/pull/761): Map product_id for a Product
+* [Fix](https://github.com/segmentio/analytics-android/pull/767): Safely handle bad URIs when tracking deep links
+
+Version 4.9.3 (Mar 29, 2021)
+============================
+* [Fix](https://github.com/segmentio/analytics-android/pull/755): Check Float NaN and Infinity
+* [Fix](https://github.com/segmentio/analytics-android/pull/758): Fix Incorrect Timestamps
+
+Version 4.9.2 (Mar 22, 2021)
+============================
+* [New](https://github.com/segmentio/analytics-android/pull/734): Make new lifecycle methods opt-out
+* [New](https://github.com/segmentio/analytics-android/pull/731): Kotlin Demo App
+* [New](https://github.com/segmentio/analytics-android/pull/739): Custom apiHost for Segment.IO and support multi-regional Segment
+* [Fix](https://github.com/segmentio/analytics-android/pull/750): Add NonNull annotations to params for analytics constructor
+* [Fix](https://github.com/segmentio/analytics-android/pull/749): Retry hasPermission in case of failure due to package manager being inactive
+* [Fix](https://github.com/segmentio/analytics-android/pull/752): Marshal NaN and other special numbers to 0.0 and not produce malformed JSON
+
+Version 4.9.0 (Oct 15, 2020)
+============================
+* [New](https://github.com/segmentio/analytics-android/pull/707): Remove the ability to natively report attribution information via Segment integrations
+* [New](https://github.com/segmentio/analytics-android/pull/727): Edge Function Support
+* [New](https://github.com/segmentio/analytics-android/pull/715): Add a Webhook Integration for viewing payloads
+* [New](https://github.com/segmentio/analytics-android/pull/728): Enable faster project settings refresh when debugging enabled
+
+Version 4.8.2 (Jul 30, 2020)
+============================
+* [Fix](https://github.com/segmentio/analytics-android/pull/686): Generate timestamps at call site rather than asynchronously
+
+Version 4.8.0 (Jul 13, 2020)
+============================
+
+* [Fix](https://github.com/segmentio/analytics-android/pull/668): Fix: Proguard/R8 configuration for createValueMap
+* [Fix](https://github.com/segmentio/analytics-android/pull/670): handle RuntimeException when calling `getActivityInfo`
+* [New](https://github.com/segmentio/analytics-android/pull/671): Experimental Nanosecond timestamps
+
+Version 4.7.1 (Jun 8, 2020)
+============================
+
+* [Fix](https://github.com/segmentio/analytics-android/pull/667): Use AndroidX lifecycle functions for App Fore/Backgrounded
+* [Fix](https://github.com/segmentio/analytics-android/pull/666): Fix alias not overridden by cached value
+* [Fix](https://github.com/segmentio/analytics-android/pull/663): Catch null intent data
+
+Version 4.7.0 (Jun 1, 2020)
+============================
+
+* [New](https://github.com/segmentio/analytics-android/pull/655): Add type to device context
+* [Fix](https://github.com/segmentio/analytics-android/pull/665): Prevent Global Context modification for one-time op
+* [New](https://github.com/segmentio/analytics-android/pull/664): Add support for Destination Middleware
+
+Version 4.6.0 (May 21, 2020)
+============================
+
+* [New](https://github.com/segmentio/analytics-android/pull/662): Add DefaultProjectSettings in Analytics.Builder
+* [Fix](https://github.com/segmentio/analytics-android/pull/659): Test coverage fix after previous merge to master
+* [New](https://github.com/segmentio/analytics-android/pull/658): Update project to AndroidX
+* [Fix](https://github.com/segmentio/analytics-android/pull/656): Set build property to String
+
+Version 4.5.0 (Apr 22, 2020)
+============================
+
+* Promoting 4.5.x to stable release.  This includes all changes since 4.3.1.
+* [Fix](https://github.com/fubotv/segment-analytics-android/pull/1): Check integration settings for null
+
+Version 4.5.0-beta.2 (Mar 23, 2020)
+===================================
+
+ * [New](https://github.com/segmentio/analytics-android/pull/632): Make crypto abstract methods public
+ * [Fix](https://github.com/segmentio/analytics-android/pull/648): Preserve BUILD and VERSION keys on reset() calls
+ * [Fix](https://github.com/segmentio/analytics-android/pull/646): Resolves ArrayIndexOutOfBoundsException crash (#586)
+ * [Fix](https://github.com/segmentio/analytics-android/pull/644): Updated documentation on deep copy and threading
+ * [Fix](https://github.com/segmentio/analytics-android/pull/642): Double check that input stream is closed
+
 Version 4.5.0-beta.1 (Dec 16, 2019)
 ===================================
 

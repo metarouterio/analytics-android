@@ -26,45 +26,99 @@ package com.segment.analytics.sample;
 import android.app.Application;
 import android.util.Log;
 import com.segment.analytics.Analytics;
-import uk.co.chrisjenx.calligraphy.CalligraphyConfig;
+import com.segment.analytics.Middleware;
+import com.segment.analytics.ValueMap;
+import com.segment.analytics.integrations.BasePayload;
+import com.segment.analytics.integrations.TrackPayload;
+import io.github.inflationx.calligraphy3.CalligraphyConfig;
+import io.github.inflationx.calligraphy3.CalligraphyInterceptor;
+import io.github.inflationx.viewpump.ViewPump;
 
 public class SampleApp extends Application {
 
-  // https://segment.com/segment-engineering/sources/android-test/settings/keys
-  private static final String ANALYTICS_WRITE_KEY = "M22kc6xTTPyKmpfFg";
+    // https://segment.com/segment-engineering/sources/android-test/settings/keys
+    private static final String ANALYTICS_WRITE_KEY = "HO63Z36e0Ufa8AAgbjDomDuKxFuUICqI";
 
-  @Override
-  public void onCreate() {
-    super.onCreate();
+    @Override
+    public void onCreate() {
+        super.onCreate();
 
-    CalligraphyConfig.initDefault(
-        new CalligraphyConfig.Builder()
-            .setDefaultFontPath("fonts/CircularStd-Book.otf")
-            .setFontAttrId(R.attr.fontPath)
-            .build());
+        ViewPump.init(
+                ViewPump.builder()
+                        .addInterceptor(
+                                new CalligraphyInterceptor(
+                                        new CalligraphyConfig.Builder()
+                                                .setDefaultFontPath("fonts/CircularStd-Book.otf")
+                                                .setFontAttrId(R.attr.fontPath)
+                                                .build()))
+                        .build());
 
-    // Initialize a new instance of the Analytics client.
-    Analytics.Builder builder =
-        new Analytics.Builder(this, ANALYTICS_WRITE_KEY)
-            .trackApplicationLifecycleEvents()
-            .trackAttributionInformation()
-            .recordScreenViews();
+        // Initialize a new instance of the Analytics client.
+        Analytics.Builder builder =
+                new Analytics.Builder(this, ANALYTICS_WRITE_KEY)
+                        .experimentalNanosecondTimestamps()
+                        .trackApplicationLifecycleEvents()
+                        .defaultProjectSettings(
+                                new ValueMap()
+                                        .putValue(
+                                                "integrations",
+                                                new ValueMap()
+                                                        .putValue(
+                                                                "Adjust",
+                                                                new ValueMap()
+                                                                        .putValue("appToken", "<>")
+                                                                        .putValue(
+                                                                                "trackAttributionData",
+                                                                                true))))
+                        .useSourceMiddleware(
+                                new Middleware() {
+                                    @Override
+                                    public void intercept(Chain chain) {
+                                        if (chain.payload().type() == BasePayload.Type.track) {
+                                            TrackPayload payload = (TrackPayload) chain.payload();
+                                            if (payload.event()
+                                                    .equalsIgnoreCase("Button B Clicked")) {
+                                                chain.proceed(payload.toBuilder().build());
+                                                return;
+                                            }
+                                        }
+                                        chain.proceed(chain.payload());
+                                    }
+                                })
+                        .useDestinationMiddleware(
+                                "Segment.io",
+                                new Middleware() {
+                                    @Override
+                                    public void intercept(Chain chain) {
+                                        if (chain.payload().type() == BasePayload.Type.track) {
+                                            TrackPayload payload = (TrackPayload) chain.payload();
+                                            if (payload.event()
+                                                    .equalsIgnoreCase("Button B Clicked")) {
+                                                chain.proceed(payload.toBuilder().build());
+                                                return;
+                                            }
+                                        }
+                                        chain.proceed(chain.payload());
+                                    }
+                                })
+                        .flushQueueSize(1)
+                        .recordScreenViews();
 
-    // Set the initialized instance as a globally accessible instance.
-    Analytics.setSingletonInstance(builder.build());
+        // Set the initialized instance as a globally accessible instance.
+        Analytics.setSingletonInstance(builder.build());
 
-    // Now anytime you call Analytics.with, the custom instance will be returned.
-    Analytics analytics = Analytics.with(this);
+        // Now anytime you call Analytics.with, the custom instance will be returned.
+        Analytics analytics = Analytics.with(this);
 
-    // If you need to know when integrations have been initialized, use the onIntegrationReady
-    // listener.
-    analytics.onIntegrationReady(
-        "Segment.io",
-        new Analytics.Callback() {
-          @Override
-          public void onReady(Object instance) {
-            Log.d("Segment Sample", "Metarouter integration ready.");
-          }
-        });
-  }
+        // If you need to know when integrations have been initialized, use the onIntegrationReady
+        // listener.
+        analytics.onIntegrationReady(
+                "Segment.io",
+                new Analytics.Callback() {
+                    @Override
+                    public void onReady(Object instance) {
+                        Log.d("Segment Sample", "Segment integration ready.");
+                    }
+                });
+    }
 }

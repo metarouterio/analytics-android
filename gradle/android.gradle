@@ -1,63 +1,76 @@
 apply plugin: 'com.diffplug.gradle.spotless'
-apply plugin: 'com.vanniktech.android.junit.jacoco'
 
 android {
-  compileSdkVersion rootProject.ext.compileSdkVersion
-  buildToolsVersion rootProject.ext.buildToolsVersion
+    compileSdkVersion rootProject.ext.compileSdkVersion
 
-  defaultConfig {
-    minSdkVersion rootProject.ext.minSdkVersion
-    targetSdkVersion rootProject.ext.targetSdkVersion
-    versionCode rootProject.ext.versionCode
-    versionName rootProject.ext.versionName
-  }
-
-  dexOptions {
-    preDexLibraries rootProject.ext.preDexLibraries
-  }
-
-  packagingOptions {
-    exclude 'LICENSE.txt'
-  }
-
-  buildTypes {
-    release {
-      minifyEnabled false
+    defaultConfig {
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode rootProject.ext.versionCode
+        versionName rootProject.ext.versionName
     }
-    debug {
-      testCoverageEnabled true
+
+    dexOptions {
+        preDexLibraries rootProject.ext.preDexLibraries
     }
-  }
 
-  compileOptions {
-    sourceCompatibility rootProject.ext.sourceCompatibilityVersion
-    targetCompatibility rootProject.ext.targetCompatibilityVersion
-  }
+    packagingOptions {
+        exclude 'LICENSE.txt'
+    }
 
-  lintOptions {
-    textReport true
-    textOutput 'stdout'
-    disable 'InvalidPackage', 'GradleCompatible'
-  }
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility rootProject.ext.sourceCompatibilityVersion
+        targetCompatibility rootProject.ext.targetCompatibilityVersion
+    }
+
+    lintOptions {
+        textReport true
+        textOutput 'stdout'
+        disable 'InvalidPackage', 'GradleCompatible'
+    }
+
+    testOptions {
+        unitTests.all {
+            systemProperty 'robolectric.dependency.repo.url', 'https://repo1.maven.org/maven2'
+        }
+    }
 }
 
 spotless {
-  java {
-    googleJavaFormat()
-    target '**/*.java'
-    licenseHeader getLicenseText()
-  }
+    java {
+        target '**/*.java'
+        googleJavaFormat().aosp()
+        licenseHeader getLicenseText()
+    }
+    kotlin {
+        target '**/*.kt'
+        ktlint('0.37.2').userData([
+                'android'        : 'true',
+                'max_line_length': '120',
+        ])
+        licenseHeader getLicenseText()
+    }
+    groovyGradle {
+        target '*.gradle'
+        greclipse()
+    }
 }
 
 def getLicenseText() {
-  def rawTextLines = rootProject.file('LICENSE.md').text.split('\n')
-  def text = ""
-  for (def line : rawTextLines) {
-    if (line.trim().length() == 0) {
-      text = text + '\n *' + line
-    } else {
-      text = text + '\n * ' + line
+    def rawTextLines = rootProject.file('LICENSE.md').text.split('\n')
+    def text = ""
+    for (def line : rawTextLines) {
+        if (line.trim().length() == 0) {
+            text = text + '\n *' + line
+        } else {
+            text = text + '\n * ' + line
+        }
     }
-  }
-  return '/**' + text + '\n */'
+    return '/**' + text + '\n */'
 }
