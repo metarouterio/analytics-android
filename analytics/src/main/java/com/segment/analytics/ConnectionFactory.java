@@ -52,7 +52,7 @@ public class ConnectionFactory {
 
     /**
      * Return a {@link HttpURLConnection} that writes batched payloads to {@code
-     * https://api.segment.io/v1/import}.
+     * https://e.metarouter.io/v1/import}.
      */
     public HttpURLConnection upload(String apiHost, String writeKey) throws IOException {
         HttpURLConnection connection = openConnection(String.format("https://%s/import", apiHost));

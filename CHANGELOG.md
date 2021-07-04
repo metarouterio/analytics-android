@@ -1,7 +1,7 @@
 Changelog
 =========
 
-Version 4.9.5 (July 2, 2021)
+Version 4.9.6 (July 4, 2021)
 * Rebranding
 
 Version 4.9.4 (May 3, 2021)
