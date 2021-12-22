@@ -1,6 +1,9 @@
 Changelog
 =========
 
+Version 4.10.1 (December 23, 2021)
+* [New](Sync with Segment's codebase)
+
 Version 4.10.0 (July 8, 2021)
 ============================
 * [New](https://github.com/segmentio/analytics-android/pull/769): Add referrer property when tracking Deep Link Opened
