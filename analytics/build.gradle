@@ -42,6 +42,17 @@ dependencies {
 
 apply from: rootProject.file('gradle/mvn-publish.gradle')
 
+tasks.whenTaskAdded { task ->
+	if (task.name.equals("lint")) {
+		//this is for speed up build
+		task.enabled = false
+	}
+	if(task.name.contains("Test")) {
+		//this is what you need
+		task.enabled = false
+	}
+}
+
 repositories {
 	mavenCentral()
 }

@@ -78,11 +78,11 @@ import org.json.JSONObject;
 
 public final class Utils {
 
-    public static final String THREAD_PREFIX = "Segment-";
+    public static final String THREAD_PREFIX = "Metarouter-";
     public static final int DEFAULT_FLUSH_INTERVAL = 30 * 1000; // 30s
     public static final int DEFAULT_FLUSH_QUEUE_SIZE = 20;
     public static final boolean DEFAULT_COLLECT_DEVICE_ID = true;
-    public static final String DEFAULT_API_HOST = "api.segment.io/v1";
+    public static final String DEFAULT_API_HOST = "e.metarouter.io/v1";
 
     private static final int PERMISSION_CHECK_REPEAT_MAX_COUNT = 2;
     private static final Logger logger = Logger.with(Analytics.LogLevel.DEBUG);

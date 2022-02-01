@@ -21,6 +21,7 @@ if (!hasProperty("signing.keyId")) {
 }
 
 task androidJavadocs(type: Javadoc) {
+    failOnError false
     source = android.sourceSets.main.java.source
     classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
     android.libraryVariants.all { variant ->
