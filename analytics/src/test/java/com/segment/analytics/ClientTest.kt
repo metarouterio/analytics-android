@@ -53,7 +53,7 @@ import org.robolectric.annotation.Config
 class ClientTest {
 
     companion object {
-        const val DEFAULT_API_HOST = "api.segment.io/v1"
+        const val DEFAULT_API_HOST = "e.metarouter.io/v1"
     }
 
     @Rule @JvmField val server = MockWebServer()

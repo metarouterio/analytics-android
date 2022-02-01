@@ -1,4 +1,4 @@
-/**
+4/**
  * The MIT License (MIT)
  *
  * Copyright (c) 2014 Segment.io, Inc.
@@ -79,7 +79,7 @@ import org.robolectric.shadows.ShadowLog
 class SegmentIntegrationTest {
 
     companion object {
-        const val DEFAULT_API_HOST = "api.segment.io/v1"
+        const val DEFAULT_API_HOST = "e.metarouter.io/v1"
     }
 
     @Rule @JvmField

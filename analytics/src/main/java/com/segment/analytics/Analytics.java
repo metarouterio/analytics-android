@@ -1395,7 +1395,7 @@ public class Analytics {
 
         /**
          * Set the apiHost name for the region to which Segment sends events to. Defaults to
-         * "api.segment.io/v1"
+         * "e.metarouter.io/v1"
          */
         public Builder defaultApiHost(String apiHost) {
             this.defaultApiHost = apiHost;
